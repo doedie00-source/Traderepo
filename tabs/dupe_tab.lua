@@ -1,3 +1,6 @@
+-- tabs/dupe_tab.lua
+-- Dupe Tab Module - FIXED UI VERSION
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -6,7 +9,6 @@ local LocalPlayer = Players.LocalPlayer
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local ReplicaListener = Knit.GetController("ReplicaListener")
 
--- Load Game Info
 local SuccessLoadCrates, CratesInfo = pcall(function() 
     return require(ReplicatedStorage.GameInfo.CratesInfo) 
 end)
@@ -35,7 +37,7 @@ function DupeTab.new(deps)
     self.Container = nil
     self.SubTabButtons = {}
     self.CurrentSubTab = "Items"
-    self.FloatingButtons = {}  -- ✅ เก็บ floating buttons
+    self.FloatingButtons = {}  -- เก็บ floating buttons
     self.TooltipRef = nil
     
     return self
@@ -86,14 +88,14 @@ function DupeTab:Init(parent)
     self:CreateSubTab(tabsContainer, "Crates", "🎁 Crates")
     self:CreateSubTab(tabsContainer, "Pets", "🐾 Pets")
     
-    -- Content Container (ขนาดเดียวกันทุกแท็บ)
+    -- Content Container
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
         Size = UDim2.new(1, 0, 1, -76),
         Position = UDim2.new(0, 0, 0, 74)
     })
     
-    -- ✅ สร้าง Floating Buttons (ซ่อนไว้ก่อน)
+    -- ✨ สร้าง Floating Buttons (ซ่อนไว้ก่อน)
     self:CreateFloatingButtons(parent)
     
     -- Load First Tab
@@ -103,13 +105,12 @@ end
 function DupeTab:CreateFloatingButtons(parent)
     local THEME = self.Config.THEME
     
-    -- ตั้งค่าขนาดและระยะห่าง
+    -- 🔹 Pet Actions - เรียงชิดกันจากขวา
     local spacing = 6
     local btnWidth = 90
     local btnHeight = 30
     local startX = -8  -- เริ่มจากขวาสุด
     
-    -- 🐾 Pet Actions - เรียงชิดกันจากขวาไปซ้าย
     self.FloatingButtons.BtnDupePet = self.UIFactory.CreateButton({
         Size = UDim2.new(0, btnWidth, 0, btnHeight),
         Position = UDim2.new(1, startX - btnWidth, 1, -36),
@@ -152,7 +153,7 @@ function DupeTab:CreateFloatingButtons(parent)
     self.FloatingButtons.BtnDeletePet.Visible = false
     self.UIFactory.AddStroke(self.FloatingButtons.BtnDeletePet, Color3.fromRGB(255, 100, 100), 1.5, 0.3)
     
-    -- 🎁 Crate Action
+    -- 🔹 Crate Action
     self.FloatingButtons.BtnAddAll1k = self.UIFactory.CreateButton({
         Size = UDim2.new(0, 130, 0, btnHeight),
         Position = UDim2.new(1, -138, 1, -36),
@@ -202,38 +203,23 @@ function DupeTab:SwitchSubTab(name)
         btn.TextColor3 = isSelected and THEME.TextWhite or THEME.TextGray
     end
     
-    -- ✅ แสดง/ซ่อน Floating Buttons และ Warning ตามแท็บ
+    -- ✨ แสดง/ซ่อน Floating Buttons ตามแท็บ
     if name == "Pets" then
-        -- แสดงปุ่มสำหรับ Pets
         self.FloatingButtons.BtnDeletePet.Visible = true
         self.FloatingButtons.BtnEvoPet.Visible = true
         self.FloatingButtons.BtnDupePet.Visible = true
         self.FloatingButtons.BtnAddAll1k.Visible = false
         
-        -- รีเซ็ต StatusBar
-        self.StatusLabel.Text = "🟢 Ready"
-        self.StatusLabel.TextColor3 = THEME.TextGray
-        
     elseif name == "Crates" then
-        -- แสดงปุ่มสำหรับ Crates
         self.FloatingButtons.BtnDeletePet.Visible = false
         self.FloatingButtons.BtnEvoPet.Visible = false
         self.FloatingButtons.BtnDupePet.Visible = false
         self.FloatingButtons.BtnAddAll1k.Visible = true
         
-        -- รีเซ็ต StatusBar
-        self.StatusLabel.Text = "🟢 Ready"
-        self.StatusLabel.TextColor3 = THEME.TextGray
-        
     else  -- Items
-        -- ซ่อนปุ่มทั้งหมด
         for _, btn in pairs(self.FloatingButtons) do
             btn.Visible = false
         end
-        
-        -- ✅ แสดง Warning ใน StatusBar (แทนที่ WarningBox)
-        self.StatusLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K • Exceeding may risk ban!"
-        self.StatusLabel.TextColor3 = THEME.Warning
     end
     
     self:RefreshInventory()
@@ -257,27 +243,34 @@ function DupeTab:RefreshInventory()
     end
 end
 
--- ============================
--- ITEMS TAB RENDERING - แก้ไข Scroll
--- ============================
+-- ✨ แสดง Warning inline ใน StatusBar แทน
+function DupeTab:UpdateStatusWarning()
+    if self.CurrentSubTab == "Items" and self.StatusLabel then
+        local THEME = self.Config.THEME
+        self.StatusLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K"
+        self.StatusLabel.TextColor3 = THEME.Warning
+    end
+end
+
+-- ============================ RENDERING ============================
+
 function DupeTab:RenderItemDupeGrid()
     local THEME = self.Config.THEME
     local DUPE_RECIPES = self.Config.DUPE_RECIPES
     
-    self.Container.ScrollBarThickness = 4  -- แสดง scrollbar เล็กๆ
-    self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y  -- Auto resize
-    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)  -- Reset ให้ auto จัดการ
+    self.Container.ScrollBarThickness = 4
+    self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)
     
     if self.Container:FindFirstChild("UIListLayout") then
         self.Container.UIListLayout:Destroy()
     end
     
-    -- Padding ที่เหมาะสม
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
     padding.PaddingTop = UDim.new(0, 8)
     padding.PaddingLeft = UDim.new(0, 4)
     padding.PaddingRight = UDim.new(0, 4)
-    padding.PaddingBottom = UDim.new(0, 12)  -- เพิ่ม padding ล่าง
+    padding.PaddingBottom = UDim.new(0, 12)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
     layout.CellPadding = UDim2.new(0, 6, 0, 6)
@@ -287,6 +280,9 @@ function DupeTab:RenderItemDupeGrid()
     
     local recipes = DUPE_RECIPES.Items or {}
     local playerData = self.InventoryManager.GetPlayerData()
+    
+    -- ✨ แสดง warning ใน StatusBar
+    self:UpdateStatusWarning()
     
     for _, recipe in ipairs(recipes) do
         self:CreateItemCard(recipe, playerData)
@@ -418,9 +414,6 @@ function DupeTab:OnItemCardClick(recipe, isOwned, isReady, foundCount, totalNeed
     end)
 end
 
--- ============================
--- CRATES TAB RENDERING - แก้ไข Scroll
--- ============================
 function DupeTab:RenderCrateGrid()
     local THEME = self.Config.THEME
     
@@ -465,7 +458,7 @@ function DupeTab:RenderCrateGrid()
     
     -- Add All Button Logic
     if self.AddAllConn then self.AddAllConn:Disconnect() end
-    self.AddAllConn = self.BtnAddAll1k.MouseButton1Click:Connect(function()
+    self.AddAllConn = self.FloatingButtons.BtnAddAll1k.MouseButton1Click:Connect(function()
         self:OnAddAllCrates(cratesList, inventoryCrates)
     end)
     
@@ -588,8 +581,8 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
         return
     end
     
-    self.BtnAddAll1k.Active = false
-    self.BtnAddAll1k.Text = "ADDING..."
+    self.FloatingButtons.BtnAddAll1k.Active = false
+    self.FloatingButtons.BtnAddAll1k.Text = "ADDING..."
     self.StateManager:SetStatus("🚀 Adding all crates (1,000 each)...", THEME.AccentBlue, self.StatusLabel)
     
     task.spawn(function()
@@ -607,15 +600,12 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
             end
         end
         self.StateManager:SetStatus("✅ Added " .. addedCount .. " types!", THEME.Success, self.StatusLabel)
-        self.BtnAddAll1k.Active = true
-        self.BtnAddAll1k.Text = "ADD 1K ALL"
+        self.FloatingButtons.BtnAddAll1k.Active = true
+        self.FloatingButtons.BtnAddAll1k.Text = "➕ ADD 1K ALL"
         self:RefreshInventory()
     end)
 end
 
--- ============================
--- PETS TAB RENDERING - แก้ไข Scroll
--- ============================
 function DupeTab:RenderPetDupeGrid()
     local THEME = self.Config.THEME
     
@@ -919,7 +909,6 @@ function DupeTab:CreatePetCard(petData, EquippedUUIDs, allData)
         end
     end)
 end
-
 -- ============================
 -- PET ACTION HANDLERS
 -- ============================
