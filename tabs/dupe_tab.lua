@@ -252,15 +252,29 @@ function DupeTab:RefreshInventory()
     if self.CurrentSubTab == "Items" then
         self.ActionBar.Visible = false
         self.WarningBox.Visible = true
-        -- Container ไม่ทับ Warning Box (ชิดด้านบน)
         self.Container.Size = UDim2.new(1, 0, 1, -128)
-        self.WarningBox.Position = UDim2.new(0, 0, 1, -52)
         
-    elseif self.CurrentSubTab == "Pets" or self.CurrentSubTab == "Crates" then
+    elseif self.CurrentSubTab == "Crates" then
         self.ActionBar.Visible = true
         self.WarningBox.Visible = false
-        -- Container ไม่ทับ Action Bar
         self.Container.Size = UDim2.new(1, 0, 1, -118)
+        
+        -- Show only Crate buttons
+        self.BtnDeletePet.Visible = false
+        self.BtnEvoPet.Visible = false
+        self.BtnDupePet.Visible = false
+        self.BtnAddAll1k.Visible = true
+        
+    elseif self.CurrentSubTab == "Pets" then
+        self.ActionBar.Visible = true
+        self.WarningBox.Visible = false
+        self.Container.Size = UDim2.new(1, 0, 1, -118)
+        
+        -- Show only Pet buttons
+        self.BtnDeletePet.Visible = true
+        self.BtnEvoPet.Visible = true
+        self.BtnDupePet.Visible = true
+        self.BtnAddAll1k.Visible = false
     end
     
     -- Render Content
