@@ -50,8 +50,8 @@ local THEME = {
     BtnMainTab = Color3.fromRGB(35, 35, 42),
     BtnMainTabSelected = Color3.fromRGB(88, 101, 242),
     BtnDupe = Color3.fromRGB(114, 137, 218), -- Light Blue
-    BtnDisabled = Color3.fromRGB(30, 30, 35),
-    TextDisabled = Color3.fromRGB(80, 80, 85),
+    BtnDisabled = Color3.fromRGB(35, 35, 40),  -- เข้มกว่าเดิม
+    TextDisabled = Color3.fromRGB(90, 90, 95),
     
     -- Status Colors
     Success = Color3.fromRGB(67, 181, 129), -- Green
