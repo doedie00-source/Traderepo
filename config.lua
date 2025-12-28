@@ -1,14 +1,14 @@
 -- config.lua
--- Configuration & Constants
+-- Configuration & Constants (Modern Theme)
 
 local CONFIG = {
-    VERSION = "7.1 (No Trade Tab)",
-    GUI_NAME = "CleanTradeGUI",
+    VERSION = "7.2 (Modular)",
+    GUI_NAME = "ModernTradeGUI",
     
     -- Window Settings
-    MAIN_WINDOW_SIZE = UDim2.new(0, 850, 0, 550),
-    SIDEBAR_WIDTH = 120,
-    MINI_ICON_SIZE = UDim2.new(0, 50, 0, 50),
+    MAIN_WINDOW_SIZE = UDim2.new(0, 900, 0, 600),
+    SIDEBAR_WIDTH = 140,
+    MINI_ICON_SIZE = UDim2.new(0, 55, 0, 55),
     
     -- Timing
     STATUS_RESET_DELAY = 4,
@@ -16,39 +16,65 @@ local CONFIG = {
     TRADE_RESET_THRESHOLD = 3,
     
     -- UI Spacing
-    CORNER_RADIUS = 8,
+    CORNER_RADIUS = 12,
     LIST_PADDING = 3,
-    BUTTON_PADDING = 5,
+    BUTTON_PADDING = 6,
     
     -- Keybind
     TOGGLE_KEY = Enum.KeyCode.T,
 }
 
+-- 🎨 Modern Theme (Glassmorphism + Vibrant)
 local THEME = {
-    MainBg = Color3.fromRGB(20, 20, 25),
-    MainTransparency = 0.1,
-    PanelBg = Color3.fromRGB(10, 10, 15),
-    PanelTransparency = 0.5,
+    -- Base Colors
+    MainBg = Color3.fromRGB(15, 15, 20),
+    MainTransparency = 0.05,
+    PanelBg = Color3.fromRGB(25, 25, 32),
+    PanelTransparency = 0.3,
+    
+    -- Glass Effect
+    GlassBg = Color3.fromRGB(30, 30, 38),
+    GlassTransparency = 0.15,
+    GlassStroke = Color3.fromRGB(70, 70, 85),
+    
+    -- Text
     TextWhite = Color3.fromRGB(255, 255, 255),
-    TextGray = Color3.fromRGB(180, 180, 180),
-    BtnDefault = Color3.fromRGB(50, 50, 60),
-    BtnSelected = Color3.fromRGB(0, 140, 255),
-    BtnMainTab = Color3.fromRGB(40, 40, 50),
-    BtnMainTabSelected = Color3.fromRGB(255, 170, 0),
-    BtnDupe = Color3.fromRGB(170, 0, 255),
-    BtnDisabled = Color3.fromRGB(40, 40, 40),
-    TextDisabled = Color3.fromRGB(100, 100, 100),
-    ItemInv = Color3.fromRGB(100, 255, 140),
-    ItemEquip = Color3.fromRGB(255, 80, 80),
-    PlayerBtn = Color3.fromRGB(255, 170, 0),
-    Success = Color3.fromRGB(85, 255, 127),
-    Fail = Color3.fromRGB(255, 85, 85),
-    DupeReady = Color3.fromRGB(0, 255, 200),
-    CrateSelected = Color3.fromRGB(0, 255, 100),
-    CardBg = Color3.fromRGB(35, 35, 35),
-    CardStrokeSelected = Color3.fromRGB(0, 255, 127),
-    CardStrokeLocked = Color3.fromRGB(255, 60, 60),
+    TextGray = Color3.fromRGB(170, 170, 180),
+    TextDim = Color3.fromRGB(120, 120, 130),
+    
+    -- Buttons
+    BtnDefault = Color3.fromRGB(45, 45, 55),
+    BtnHover = Color3.fromRGB(55, 55, 65),
+    BtnSelected = Color3.fromRGB(88, 101, 242), -- Discord Purple
+    BtnMainTab = Color3.fromRGB(35, 35, 42),
+    BtnMainTabSelected = Color3.fromRGB(88, 101, 242),
+    BtnDupe = Color3.fromRGB(114, 137, 218), -- Light Blue
+    BtnDisabled = Color3.fromRGB(30, 30, 35),
+    TextDisabled = Color3.fromRGB(80, 80, 85),
+    
+    -- Status Colors
+    Success = Color3.fromRGB(67, 181, 129), -- Green
+    Fail = Color3.fromRGB(240, 71, 71), -- Red
+    Warning = Color3.fromRGB(250, 166, 26), -- Yellow
+    Info = Color3.fromRGB(88, 101, 242), -- Purple
+    
+    -- Special
+    ItemInv = Color3.fromRGB(67, 181, 129),
+    ItemEquip = Color3.fromRGB(240, 71, 71),
+    PlayerBtn = Color3.fromRGB(250, 166, 26),
+    DupeReady = Color3.fromRGB(35, 209, 96),
+    
+    -- Cards
+    CardBg = Color3.fromRGB(32, 34, 42),
+    CardStrokeSelected = Color3.fromRGB(88, 101, 242),
+    CardStrokeLocked = Color3.fromRGB(240, 71, 71),
+    CrateSelected = Color3.fromRGB(67, 181, 129),
+    
+    -- Accent
     StarColor = Color3.fromRGB(255, 215, 0),
+    AccentPurple = Color3.fromRGB(88, 101, 242),
+    AccentBlue = Color3.fromRGB(114, 137, 218),
+    AccentGreen = Color3.fromRGB(67, 181, 129),
 }
 
 local DUPE_RECIPES = {
