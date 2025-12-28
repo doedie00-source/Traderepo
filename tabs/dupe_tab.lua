@@ -50,15 +50,15 @@ function DupeTab:Init(parent)
     -- Header
     local header = Instance.new("Frame", parent)
     header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 90)
+    header.Size = UDim2.new(1, 0, 0, 78)
     header.BackgroundTransparency = 1
     
     local title = self.UIFactory.CreateLabel({
         Parent = header,
         Text = "✨ Magic Dupe System",
-        Size = UDim2.new(1, 0, 0, 30),
+        Size = UDim2.new(1, 0, 0, 26),
         TextColor = THEME.TextWhite,
-        TextSize = 18,
+        TextSize = 15,
         Font = Enum.Font.GothamBold,
         TextXAlign = Enum.TextXAlignment.Left
     })
@@ -66,23 +66,23 @@ function DupeTab:Init(parent)
     local subtitle = self.UIFactory.CreateLabel({
         Parent = header,
         Text = "Dupe items, crates, and pets using trade exploit",
-        Size = UDim2.new(1, 0, 0, 20),
-        Position = UDim2.new(0, 0, 0, 30),
+        Size = UDim2.new(1, 0, 0, 18),
+        Position = UDim2.new(0, 0, 0, 26),
         TextColor = THEME.TextDim,
-        TextSize = 11,
+        TextSize = 10,
         Font = Enum.Font.Gotham,
         TextXAlign = Enum.TextXAlignment.Left
     })
     
     -- Sub-tabs
     local tabsContainer = Instance.new("Frame", header)
-    tabsContainer.Size = UDim2.new(1, 0, 0, 35)
-    tabsContainer.Position = UDim2.new(0, 0, 0, 55)
+    tabsContainer.Size = UDim2.new(1, 0, 0, 32)
+    tabsContainer.Position = UDim2.new(0, 0, 0, 46)
     tabsContainer.BackgroundTransparency = 1
     
     local tabsLayout = Instance.new("UIListLayout", tabsContainer)
     tabsLayout.FillDirection = Enum.FillDirection.Horizontal
-    tabsLayout.Padding = UDim.new(0, 8)
+    tabsLayout.Padding = UDim.new(0, 6)
     
     self:CreateSubTab(tabsContainer, "Items", "📦 Items")
     self:CreateSubTab(tabsContainer, "Crates", "🎁 Crates")
@@ -91,8 +91,8 @@ function DupeTab:Init(parent)
     -- Content Container
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
-        Size = UDim2.new(1, 0, 1, -140),
-        Position = UDim2.new(0, 0, 0, 95)
+        Size = UDim2.new(1, 0, 1, -126),
+        Position = UDim2.new(0, 0, 0, 82)
     })
     
     -- Action Bar
@@ -111,12 +111,12 @@ function DupeTab:CreateSubTab(parent, name, text)
     local btn = self.UIFactory.CreateButton({
         Parent = parent,
         Text = text,
-        Size = UDim2.new(0, 110, 0, 35),
+        Size = UDim2.new(0, 95, 0, 32),
         BgColor = THEME.BtnDefault,
         TextColor = THEME.TextGray,
-        TextSize = 12,
+        TextSize = 11,
         Font = Enum.Font.GothamBold,
-        CornerRadius = 8,
+        CornerRadius = 6,
         OnClick = function()
             self:SwitchSubTab(name)
         end
@@ -148,50 +148,54 @@ function DupeTab:CreateActionBar(parent)
     
     self.ActionBar = Instance.new("Frame", parent)
     self.ActionBar.Name = "ActionBar"
-    self.ActionBar.Size = UDim2.new(1, 0, 0, 45)
-    self.ActionBar.Position = UDim2.new(0, 0, 1, -45)
+    self.ActionBar.Size = UDim2.new(1, 0, 0, 42)
+    self.ActionBar.Position = UDim2.new(0, 0, 1, -42)
     self.ActionBar.BackgroundColor3 = THEME.GlassBg
     self.ActionBar.BackgroundTransparency = THEME.GlassTransparency
     self.ActionBar.BorderSizePixel = 0
     self.ActionBar.Visible = false
     
-    self.UIFactory.AddCorner(self.ActionBar, 10)
+    self.UIFactory.AddCorner(self.ActionBar, 8)
     self.UIFactory.AddStroke(self.ActionBar, THEME.GlassStroke, 1, 0.7)
     
     -- Pet Actions
     self.BtnDeletePet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 90, 0, 32),
-        Position = UDim2.new(0, 8, 0.5, -16),
+        Size = UDim2.new(0, 80, 0, 30),
+        Position = UDim2.new(0, 6, 0.5, -15),
         Text = "🗑️ DELETE",
         BgColor = THEME.Fail,
+        TextSize = 10,
         Parent = self.ActionBar,
         OnClick = function() self:OnDeletePets() end
     })
     
     self.BtnEvoPet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 130, 0, 32),
-        Position = UDim2.new(0.5, -65, 0.5, -16),
+        Size = UDim2.new(0, 115, 0, 30),
+        Position = UDim2.new(0.5, -57.5, 0.5, -15),
         Text = "EVOLVE",
         BgColor = THEME.BtnDefault,
+        TextSize = 10,
         Parent = self.ActionBar,
         OnClick = function() self:OnEvolvePets() end
     })
     
     self.BtnDupePet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 90, 0, 32),
-        Position = UDim2.new(1, -98, 0.5, -16),
+        Size = UDim2.new(0, 80, 0, 30),
+        Position = UDim2.new(1, -86, 0.5, -15),
         Text = "✨ DUPE",
         BgColor = THEME.BtnDupe,
+        TextSize = 10,
         Parent = self.ActionBar,
         OnClick = function() self:OnDupePets() end
     })
     
     -- Crate Actions
     self.BtnAddAll1k = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 140, 0, 32),
-        Position = UDim2.new(1, -148, 0.5, -16),
+        Size = UDim2.new(0, 125, 0, 30),
+        Position = UDim2.new(1, -131, 0.5, -15),
         Text = "ADD 1K ALL",
         BgColor = THEME.AccentGreen,
+        TextSize = 10,
         Parent = self.ActionBar
     })
     self.UIFactory.AddStroke(self.BtnAddAll1k, Color3.new(1,1,1), 1, 0.6)
@@ -202,31 +206,31 @@ function DupeTab:CreateWarningBox(parent)
     
     self.WarningBox = Instance.new("Frame", parent)
     self.WarningBox.Name = "WarningBox"
-    self.WarningBox.Size = UDim2.new(1, 0, 0, 60)
-    self.WarningBox.Position = UDim2.new(0, 0, 1, -110)
-    self.WarningBox.BackgroundColor3 = Color3.fromRGB(40, 30, 20)
+    self.WarningBox.Size = UDim2.new(1, 0, 0, 52)
+    self.WarningBox.Position = UDim2.new(0, 0, 1, -98)
+    self.WarningBox.BackgroundColor3 = Color3.fromRGB(35, 28, 22)
     self.WarningBox.BackgroundTransparency = 0.2
     self.WarningBox.BorderSizePixel = 0
     self.WarningBox.Visible = false
     
-    self.UIFactory.AddCorner(self.WarningBox, 10)
+    self.UIFactory.AddCorner(self.WarningBox, 8)
     self.UIFactory.AddStroke(self.WarningBox, THEME.Warning, 1.5, 0.4)
     
     local icon = self.UIFactory.CreateLabel({
         Parent = self.WarningBox,
         Text = "⚠️",
-        Size = UDim2.new(0, 40, 1, 0),
-        TextSize = 24,
+        Size = UDim2.new(0, 35, 1, 0),
+        TextSize = 20,
         Font = Enum.Font.GothamBold
     })
     
     local text = self.UIFactory.CreateLabel({
         Parent = self.WarningBox,
         Text = "WARNING: Do not exceed limits!\nSCROLLS: ~150 | TICKETS: 10k | POTIONS: 2k\nRisk of ban if hoarding excessive amounts.",
-        Size = UDim2.new(1, -50, 1, -10),
-        Position = UDim2.new(0, 45, 0, 5),
+        Size = UDim2.new(1, -40, 1, -8),
+        Position = UDim2.new(0, 38, 0, 4),
         TextColor = THEME.Warning,
-        TextSize = 10,
+        TextSize = 9,
         Font = Enum.Font.GothamBold,
         TextXAlign = Enum.TextXAlignment.Left
     })
@@ -247,9 +251,9 @@ function DupeTab:RefreshInventory()
     
     -- Update Container Size
     if self.CurrentSubTab == "Items" then
-        self.Container.Size = UDim2.new(1, 0, 1, -210)
+        self.Container.Size = UDim2.new(1, 0, 1, -186)
     elseif self.CurrentSubTab == "Pets" or self.CurrentSubTab == "Crates" then
-        self.Container.Size = UDim2.new(1, 0, 1, -185)
+        self.Container.Size = UDim2.new(1, 0, 1, -168)
     end
     
     -- Render Content
@@ -277,13 +281,13 @@ function DupeTab:RenderItemDupeGrid()
     end
     
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
-    padding.PaddingTop = UDim.new(0, 10)
-    padding.PaddingLeft = UDim.new(0, 10)
-    padding.PaddingRight = UDim.new(0, 10)
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
-    layout.CellPadding = UDim2.new(0, 8, 0, 8)
-    layout.CellSize = UDim2.new(0, 105, 0, 130)
+    layout.CellPadding = UDim2.new(0, 6, 0, 6)
+    layout.CellSize = UDim2.new(0, 92, 0, 115)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     
     local recipes = DUPE_RECIPES.Items or {}
@@ -433,12 +437,12 @@ function DupeTab:RenderCrateGrid()
     end
     
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
-    padding.PaddingTop = UDim.new(0, 10)
-    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 8)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
-    layout.CellPadding = UDim2.new(0, 8, 0, 8)
-    layout.CellSize = UDim2.new(0, 100, 0, 115)
+    layout.CellPadding = UDim2.new(0, 6, 0, 6)
+    layout.CellSize = UDim2.new(0, 88, 0, 102)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     
     local replica = ReplicaListener:GetReplica()
@@ -661,12 +665,12 @@ function DupeTab:RenderPetDupeGrid()
     end
     
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
-    padding.PaddingTop = UDim.new(0, 10)
-    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 8)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
-    layout.CellSize = UDim2.new(0, 105, 0, 125)
-    layout.CellPadding = UDim2.new(0, 8, 0, 8)
+    layout.CellSize = UDim2.new(0, 92, 0, 110)
+    layout.CellPadding = UDim2.new(0, 6, 0, 6)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     
     local replica = ReplicaListener:GetReplica()
@@ -1034,33 +1038,33 @@ function DupeTab:ShowQuantityPopup(itemData, onConfirm)
     PopupFrame.BorderSizePixel = 0
     
     local popupBox = Instance.new("Frame", PopupFrame)
-    popupBox.Size = UDim2.new(0, 260, 0, 160)
-    popupBox.Position = UDim2.new(0.5, -130, 0.5, -80)
+    popupBox.Size = UDim2.new(0, 240, 0, 150)
+    popupBox.Position = UDim2.new(0.5, -120, 0.5, -75)
     popupBox.BackgroundColor3 = THEME.GlassBg
     popupBox.ZIndex = 3001
     popupBox.BorderSizePixel = 0
     
-    self.UIFactory.AddCorner(popupBox, 12)
+    self.UIFactory.AddCorner(popupBox, 10)
     self.UIFactory.AddStroke(popupBox, THEME.AccentPurple, 2, 0)
     
     local titleLabel = self.UIFactory.CreateLabel({
         Parent = popupBox,
         Text = "ENTER AMOUNT",
-        Size = UDim2.new(1, 0, 0, 45),
+        Size = UDim2.new(1, 0, 0, 38),
         TextColor = THEME.TextWhite,
         Font = Enum.Font.GothamBold,
-        TextSize = 14
+        TextSize = 13
     })
     titleLabel.ZIndex = 3002
     
     local input = Instance.new("TextBox", popupBox)
-    input.Size = UDim2.new(0.85, 0, 0, 38)
+    input.Size = UDim2.new(0.85, 0, 0, 34)
     input.Position = UDim2.new(0.075, 0, 0.35, 0)
     input.Text = tostring(itemData.Default or 1)
     input.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     input.TextColor3 = THEME.TextWhite
     input.Font = Enum.Font.Code
-    input.TextSize = 16
+    input.TextSize = 15
     input.ClearTextOnFocus = false
     input.ZIndex = 3002
     input.BorderSizePixel = 0
@@ -1072,18 +1076,18 @@ function DupeTab:ShowQuantityPopup(itemData, onConfirm)
     local inputConn = self.Utils.SanitizeNumberInput(input, maxValue)
     
     local confirmBtn = self.UIFactory.CreateButton({
-        Size = UDim2.new(0.85, 0, 0, 38),
+        Size = UDim2.new(0.85, 0, 0, 34),
         Position = UDim2.new(0.075, 0, 0.7, 0),
         Text = "CONFIRM",
         BgColor = THEME.AccentPurple,
-        CornerRadius = 8,
+        CornerRadius = 6,
         Parent = popupBox
     })
     confirmBtn.ZIndex = 3002
     
     local closeBtn = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 28, 0, 28),
-        Position = UDim2.new(1, -32, 0, 4),
+        Size = UDim2.new(0, 26, 0, 26),
+        Position = UDim2.new(1, -30, 0, 4),
         Text = "✕",
         BgColor = THEME.Fail,
         CornerRadius = 6,
@@ -1117,22 +1121,22 @@ function DupeTab:ShowConfirm(text, onYes)
     ConfirmOverlay.BorderSizePixel = 0
     
     local box = Instance.new("Frame", ConfirmOverlay)
-    box.Size = UDim2.new(0, 340, 0, 170)
-    box.Position = UDim2.new(0.5, -170, 0.5, -85)
+    box.Size = UDim2.new(0, 310, 0, 155)
+    box.Position = UDim2.new(0.5, -155, 0.5, -77.5)
     box.BackgroundColor3 = THEME.GlassBg
     box.ZIndex = 2001
     box.BorderSizePixel = 0
     
-    self.UIFactory.AddCorner(box, 12)
+    self.UIFactory.AddCorner(box, 10)
     self.UIFactory.AddStroke(box, THEME.Fail, 2, 0)
     
     local titleLabel = self.UIFactory.CreateLabel({
         Parent = box,
         Text = text,
-        Size = UDim2.new(1, 0, 0, 55),
-        Position = UDim2.new(0, 0, 0, 10),
+        Size = UDim2.new(1, 0, 0, 48),
+        Position = UDim2.new(0, 0, 0, 8),
         Font = Enum.Font.GothamBold,
-        TextSize = 16,
+        TextSize = 14,
         TextColor = THEME.Fail
     })
     titleLabel.ZIndex = 2002
@@ -1140,29 +1144,29 @@ function DupeTab:ShowConfirm(text, onYes)
     local subLabel = self.UIFactory.CreateLabel({
         Parent = box,
         Text = "Are you sure? This cannot be undone!",
-        Size = UDim2.new(1, -20, 0, 40),
-        Position = UDim2.new(0, 10, 0, 55),
+        Size = UDim2.new(1, -16, 0, 36),
+        Position = UDim2.new(0, 8, 0, 50),
         Font = Enum.Font.Gotham,
-        TextSize = 12,
+        TextSize = 11,
         TextColor = THEME.TextGray
     })
     subLabel.ZIndex = 2002
     subLabel.TextWrapped = true
     
     local btnContainer = Instance.new("Frame", box)
-    btnContainer.Size = UDim2.new(1, 0, 0, 45)
-    btnContainer.Position = UDim2.new(0, 0, 1, -55)
+    btnContainer.Size = UDim2.new(1, 0, 0, 42)
+    btnContainer.Position = UDim2.new(0, 0, 1, -50)
     btnContainer.BackgroundTransparency = 1
     btnContainer.ZIndex = 2002
     
     local layout = Instance.new("UIListLayout", btnContainer)
     layout.FillDirection = Enum.FillDirection.Horizontal
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.Padding = UDim.new(0, 12)
+    layout.Padding = UDim.new(0, 10)
     
     local cancelBtn = self.UIFactory.CreateButton({
         Text = "CANCEL",
-        Size = UDim2.new(0, 110, 0, 38),
+        Size = UDim2.new(0, 100, 0, 34),
         BgColor = THEME.BtnDefault,
         Parent = btnContainer,
         OnClick = function()
@@ -1173,7 +1177,7 @@ function DupeTab:ShowConfirm(text, onYes)
     
     local yesBtn = self.UIFactory.CreateButton({
         Text = "YES, DELETE",
-        Size = UDim2.new(0, 130, 0, 38),
+        Size = UDim2.new(0, 120, 0, 34),
         BgColor = THEME.Fail,
         Parent = btnContainer,
         OnClick = function()
