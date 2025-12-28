@@ -99,7 +99,7 @@ function DupeTab:Init(parent)
     -- Action Bar
     self:CreateActionBar(parent)
     
-    -- Warning Box (for Items tab)
+    -- Warning Box (for Items tab) - IMPROVED VERSION
     self:CreateWarningBox(parent)
     
     -- Load First Tab
@@ -203,41 +203,45 @@ function DupeTab:CreateActionBar(parent)
     self.UIFactory.AddStroke(self.BtnAddAll1k, Color3.new(1,1,1), 1, 0.6)
 end
 
+-- ปรับปรุง Warning Box ให้อ่านง่ายขึ้น แสดงเป็นแถวเดียว
 function DupeTab:CreateWarningBox(parent)
     local THEME = self.Config.THEME
     
     self.WarningBox = Instance.new("Frame", parent)
     self.WarningBox.Name = "WarningBox"
-    self.WarningBox.Size = UDim2.new(1, 0, 0, 52)
-    self.WarningBox.Position = UDim2.new(0, 0, 1, -52)
-    self.WarningBox.BackgroundColor3 = Color3.fromRGB(35, 28, 22)
-    self.WarningBox.BackgroundTransparency = 0.2
+    self.WarningBox.Size = UDim2.new(1, -16, 0, 38)  -- ลดความสูง + เพิ่ม margin
+    self.WarningBox.Position = UDim2.new(0, 8, 1, -46)  -- ห่างจากขอบล่างมากขึ้น
+    self.WarningBox.BackgroundColor3 = Color3.fromRGB(40, 32, 25)  -- เข้มขึ้นเล็กน้อย
+    self.WarningBox.BackgroundTransparency = 0.15  -- ทึบขึ้น
     self.WarningBox.BorderSizePixel = 0
     self.WarningBox.Visible = false
     self.WarningBox.ZIndex = 99
     
     self.UIFactory.AddCorner(self.WarningBox, 8)
-    self.UIFactory.AddStroke(self.WarningBox, THEME.Warning, 1.5, 0.4)
+    self.UIFactory.AddStroke(self.WarningBox, THEME.Warning, 2, 0.3)  -- เส้นชัดขึ้น
     
+    -- ไอคอนเตือน
     local icon = self.UIFactory.CreateLabel({
         Parent = self.WarningBox,
         Text = "⚠️",
-        Size = UDim2.new(0, 35, 1, 0),
-        TextSize = 20,
+        Size = UDim2.new(0, 32, 1, 0),
+        Position = UDim2.new(0, 4, 0, 0),
+        TextSize = 18,
         Font = Enum.Font.GothamBold
     })
     
+    -- ข้อความเตือนแบบแถวเดียว กระชับ อ่านง่าย
     local text = self.UIFactory.CreateLabel({
         Parent = self.WarningBox,
-        Text = "WARNING: Do not exceed limits!\nSCROLLS: ~150 | TICKETS: 10k | POTIONS: 2k\nRisk of ban if hoarding excessive amounts.",
-        Size = UDim2.new(1, -40, 1, -8),
-        Position = UDim2.new(0, 38, 0, 4),
+        Text = "⚠️ LIMITS: SCROLLS ~150 | TICKETS ~10K | POTIONS ~2K  •  Exceeding may risk ban!",
+        Size = UDim2.new(1, -40, 1, 0),
+        Position = UDim2.new(0, 36, 0, 0),
         TextColor = THEME.Warning,
-        TextSize = 9,
+        TextSize = 10,
         Font = Enum.Font.GothamBold,
         TextXAlign = Enum.TextXAlignment.Left
     })
-    text.TextWrapped = true
+    text.TextWrapped = false  -- ไม่ wrap เพื่อให้เป็นบรรทัดเดียว
 end
 
 function DupeTab:RefreshInventory()
@@ -248,16 +252,18 @@ function DupeTab:RefreshInventory()
         end
     end
     
-    -- Show/Hide elements based on tab
+    -- Show/Hide elements based on tab + ปรับ Container size ให้เหมาะสม
     if self.CurrentSubTab == "Items" then
         self.ActionBar.Visible = false
         self.WarningBox.Visible = true
-        self.Container.Size = UDim2.new(1, 0, 1, -128)
+        self.Container.Size = UDim2.new(1, -16, 1, -136)  -- ปรับให้มี margin ซ้าย-ขวา และล่างมากขึ้น
+        self.Container.Position = UDim2.new(0, 8, 0, 74)
         
     elseif self.CurrentSubTab == "Crates" then
         self.ActionBar.Visible = true
         self.WarningBox.Visible = false
-        self.Container.Size = UDim2.new(1, 0, 1, -118)
+        self.Container.Size = UDim2.new(1, -16, 1, -126)  -- margin ซ้าย-ขวา
+        self.Container.Position = UDim2.new(0, 8, 0, 74)
         
         -- Show only Crate buttons
         self.BtnDeletePet.Visible = false
@@ -268,7 +274,8 @@ function DupeTab:RefreshInventory()
     elseif self.CurrentSubTab == "Pets" then
         self.ActionBar.Visible = true
         self.WarningBox.Visible = false
-        self.Container.Size = UDim2.new(1, 0, 1, -118)
+        self.Container.Size = UDim2.new(1, -16, 1, -126)  -- margin ซ้าย-ขวา
+        self.Container.Position = UDim2.new(0, 8, 0, 74)
         
         -- Show only Pet buttons
         self.BtnDeletePet.Visible = true
@@ -288,23 +295,26 @@ function DupeTab:RefreshInventory()
 end
 
 -- ============================
--- ITEMS TAB RENDERING
+-- ITEMS TAB RENDERING - แก้ไข Scroll
 -- ============================
 function DupeTab:RenderItemDupeGrid()
     local THEME = self.Config.THEME
     local DUPE_RECIPES = self.Config.DUPE_RECIPES
     
-    self.Container.ScrollBarThickness = 0
-    self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Container.ScrollBarThickness = 4  -- แสดง scrollbar เล็กๆ
+    self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y  -- Auto resize
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)  -- Reset ให้ auto จัดการ
     
     if self.Container:FindFirstChild("UIListLayout") then
         self.Container.UIListLayout:Destroy()
     end
     
+    -- Padding ที่เหมาะสม
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
     padding.PaddingTop = UDim.new(0, 8)
-    padding.PaddingLeft = UDim.new(0, 8)
-    padding.PaddingRight = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 12)  -- เพิ่ม padding ล่าง
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
     layout.CellPadding = UDim2.new(0, 6, 0, 6)
@@ -446,13 +456,14 @@ function DupeTab:OnItemCardClick(recipe, isOwned, isReady, foundCount, totalNeed
 end
 
 -- ============================
--- CRATES TAB RENDERING
+-- CRATES TAB RENDERING - แก้ไข Scroll
 -- ============================
 function DupeTab:RenderCrateGrid()
     local THEME = self.Config.THEME
     
-    self.Container.ScrollBarThickness = 0
+    self.Container.ScrollBarThickness = 4
     self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)
     
     if self.Container:FindFirstChild("UIListLayout") then
         self.Container.UIListLayout:Destroy()
@@ -460,8 +471,9 @@ function DupeTab:RenderCrateGrid()
     
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
     padding.PaddingTop = UDim.new(0, 8)
-    padding.PaddingLeft = UDim.new(0, 8)
-    padding.PaddingRight = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 12)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
     layout.CellPadding = UDim2.new(0, 6, 0, 6)
@@ -639,7 +651,7 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
 end
 
 -- ============================
--- PETS TAB RENDERING
+-- PETS TAB RENDERING - แก้ไข Scroll
 -- ============================
 function DupeTab:RenderPetDupeGrid()
     local THEME = self.Config.THEME
@@ -681,8 +693,9 @@ function DupeTab:RenderPetDupeGrid()
         end)
     end
     
-    self.Container.ScrollBarThickness = 0
+    self.Container.ScrollBarThickness = 4
     self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)
     
     if self.Container:FindFirstChild("UIListLayout") then
         self.Container.UIListLayout:Destroy()
@@ -690,8 +703,9 @@ function DupeTab:RenderPetDupeGrid()
     
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
     padding.PaddingTop = UDim.new(0, 8)
-    padding.PaddingLeft = UDim.new(0, 8)
-    padding.PaddingRight = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 12)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
     layout.CellSize = UDim2.new(0, 92, 0, 110)
@@ -1053,7 +1067,6 @@ end
 -- POPUPS
 -- ============================
 function DupeTab:ShowQuantityPopup(itemData, onConfirm)
-    -- Implementation same as original
     local THEME = self.Config.THEME
     
     local PopupFrame = Instance.new("Frame", self.ScreenGui)
