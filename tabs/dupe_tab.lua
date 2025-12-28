@@ -194,12 +194,9 @@ function DupeTab:SwitchSubTab(name)
     self.CurrentSubTab = name
     self.StateManager.currentDupeTab = name
     
-    -- self.StateManager.selectedPets = {}   -- (คอมเมนต์ออก) ถ้าอยากให้เลือกสัตว์ค้างไว้ได้ ก็ปิดบรรทัดนี้
-    -- self.StateManager.selectedCrates = {} -- ❌ [ลบบรรทัดนี้ออก] ตัวต้นเหตุ! อย่าล้างค่ากล่องเมื่อสลับแท็บ
-    
-    -- ถ้าจะล้างเฉพาะ Pets (เพราะกลัวเผลอลบ) ให้เปิดบรรทัด Pet ไว้ได้
-    -- แต่บรรทัด selectedCrates ต้องเอาออกแน่นอนครับ
-    self.StateManager.selectedPets = {} 
+    -- ❌❌ ลบ 2 บรรทัดนี้ทิ้งไปเลยครับ ห้ามมีเด็ดขาด ❌❌
+    -- self.StateManager.selectedPets = {} 
+    -- self.StateManager.selectedCrates = {} 
     
     -- Update Sub-tab Buttons Style
     for tabName, btn in pairs(self.SubTabButtons) do
