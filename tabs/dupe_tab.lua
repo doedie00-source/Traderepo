@@ -155,6 +155,7 @@ function DupeTab:CreateActionBar(parent)
     self.ActionBar.BackgroundTransparency = THEME.GlassTransparency
     self.ActionBar.BorderSizePixel = 0
     self.ActionBar.Visible = false
+    self.ActionBar.ZIndex = 100
     
     self.UIFactory.AddCorner(self.ActionBar, 8)
     self.UIFactory.AddStroke(self.ActionBar, THEME.GlassStroke, 1, 0.7)
@@ -208,11 +209,12 @@ function DupeTab:CreateWarningBox(parent)
     self.WarningBox = Instance.new("Frame", parent)
     self.WarningBox.Name = "WarningBox"
     self.WarningBox.Size = UDim2.new(1, 0, 0, 52)
-    self.WarningBox.Position = UDim2.new(0, 0, 1, -94)
+    self.WarningBox.Position = UDim2.new(0, 0, 1, -52)
     self.WarningBox.BackgroundColor3 = Color3.fromRGB(35, 28, 22)
     self.WarningBox.BackgroundTransparency = 0.2
     self.WarningBox.BorderSizePixel = 0
     self.WarningBox.Visible = false
+    self.WarningBox.ZIndex = 99
     
     self.UIFactory.AddCorner(self.WarningBox, 8)
     self.UIFactory.AddStroke(self.WarningBox, THEME.Warning, 1.5, 0.4)
@@ -246,15 +248,19 @@ function DupeTab:RefreshInventory()
         end
     end
     
-    -- Hide/Show Action Bar and Warning
-    self.ActionBar.Visible = (self.CurrentSubTab == "Pets" or self.CurrentSubTab == "Crates")
-    self.WarningBox.Visible = (self.CurrentSubTab == "Items")
-    
-    -- Update Container Size (ปรับให้ใช้พื้นที่เต็ม)
+    -- Show/Hide elements based on tab
     if self.CurrentSubTab == "Items" then
-        self.Container.Size = UDim2.new(1, 0, 1, -168) -- 72 header + 52 warning + 42 action + 2 spacing
+        self.ActionBar.Visible = false
+        self.WarningBox.Visible = true
+        -- Container ไม่ทับ Warning Box (ชิดด้านบน)
+        self.Container.Size = UDim2.new(1, 0, 1, -128)
+        self.WarningBox.Position = UDim2.new(0, 0, 1, -52)
+        
     elseif self.CurrentSubTab == "Pets" or self.CurrentSubTab == "Crates" then
-        self.Container.Size = UDim2.new(1, 0, 1, -118) -- 72 header + 42 action + 4 spacing
+        self.ActionBar.Visible = true
+        self.WarningBox.Visible = false
+        -- Container ไม่ทับ Action Bar
+        self.Container.Size = UDim2.new(1, 0, 1, -118)
     end
     
     -- Render Content
