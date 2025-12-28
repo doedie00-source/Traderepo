@@ -84,14 +84,39 @@ function GUI:Initialize()
     self.StatusLabel = self.UIFactory.CreateLabel({
         Parent = self.MainFrame,
         Text = "🟢 Ready",
-        Size = UDim2.new(1, -16, 0, 22),
-        Position = UDim2.new(0, 8, 1, -26),
+        Size = UDim2.new(1, -16, 0, 32),  -- ความสูง 32px
+        Position = UDim2.new(0, 8, 1, -36),  -- ล่างสุดของหน้าต่าง
         TextColor = THEME.TextGray,
-        TextSize = 10,
+        TextSize = 11,
         Font = Enum.Font.GothamMedium,
         TextXAlign = Enum.TextXAlignment.Left
     })
-
+    
+    self.StatusLabel.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
+    self.StatusLabel.BackgroundTransparency = 0.5
+    self.StatusLabel.BorderSizePixel = 0
+    
+    -- เส้นบนแบ่ง zone
+    local topLine = Instance.new("Frame", self.StatusLabel)
+    topLine.Size = UDim2.new(1, 0, 0, 1)
+    topLine.Position = UDim2.new(0, 0, 0, 0)
+    topLine.BackgroundColor3 = THEME.GlassStroke
+    topLine.BackgroundTransparency = 0.7
+    topLine.BorderSizePixel = 0
+    
+    -- Padding ซ้ายนิดหน่อย
+    local padding = Instance.new("UIPadding", self.StatusLabel)
+    padding.PaddingLeft = UDim.new(0, 12)
+    padding.PaddingRight = UDim.new(0, 12)
+    
+    -- ✨ จัดการข้อความยาว - ขึ้นบรรทัดใหม่แบบ dynamic
+    self.StatusLabel.TextWrapped = true
+    self.StatusLabel.TextYAlignment = Enum.TextYAlignment.Center
+    
+    -- ถ้าข้อความยาว จะขยายความสูงอัตโนมัติ (ไม่เกิน 2 บรรทัด)
+    self.StatusLabel.AutomaticSize = Enum.AutomaticSize.Y
+    self.StatusLabel.Size = UDim2.new(1, -16, 0, 32)
+    
     -- Start
     self:SwitchTab("Players")
     self:StartMonitoring()
