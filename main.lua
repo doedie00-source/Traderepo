@@ -1,11 +1,6 @@
 -- main.lua
--- Universal Trade System V7.1 - Modular Entry Point
--- วางไฟล์ลง GitHub/Pastebin แล้วใช้ URL ด้านล่าง
-
 local BASE_URL = "https://raw.githubusercontent.com/doedie00-source/Traderepo/refs/heads/main/"
--- หรือ Pastebin: "https://pastebin.com/raw/"
 
--- 📦 Module URLs
 local MODULES = {
     config = BASE_URL .. "config.lua",
     utils = BASE_URL .. "utils.lua",
@@ -16,28 +11,14 @@ local MODULES = {
     gui = BASE_URL .. "gui.lua",
 }
 
--- 🔧 Helper Function
 local function loadModule(url, name)
-    local success, result = pcall(function()
-        return game:HttpGet(url)
-    end)
-    
-    if not success then
-        warn("❌ Failed to load " .. name .. ": " .. tostring(result))
-        return nil
-    end
-    
+    local success, result = pcall(function() return game:HttpGet(url) end)
+    if not success then return nil end
     local func, err = loadstring(result)
-    if not func then
-        warn("❌ Failed to compile " .. name .. ": " .. tostring(err))
-        return nil
-    end
-    
-    print("✅ Loaded: " .. name)
+    if not func then return nil end
     return func()
 end
 
--- 📥 Load All Modules
 print("🚀 Loading Universal Trade System V7.1...")
 
 local Config = loadModule(MODULES.config, "config")
@@ -48,23 +29,23 @@ local InventoryManager = loadModule(MODULES.inventory_manager, "inventory_manage
 local TradeManager = loadModule(MODULES.trade_manager, "trade_manager")
 local GUI = loadModule(MODULES.gui, "gui")
 
--- ⚠️ Validation
 if not (Config and Utils and UIFactory and StateManager and InventoryManager and TradeManager and GUI) then
-    error("❌ Critical module failed to load. Aborting.")
+    error("❌ Critical module failed to load.")
     return
 end
 
--- 🎯 Initialize System
+-- [จุดที่แก้ไข] เชื่อมต่อ Config เข้ากับ Module ต่างๆ โดยตรง
+UIFactory.Config = Config
+StateManager.Config = Config
+TradeManager.Config = Config
+
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local LocalPlayer = Players.LocalPlayer
 
--- Cleanup Old GUI
 if CoreGui:FindFirstChild(Config.CONFIG.GUI_NAME) then
     CoreGui[Config.CONFIG.GUI_NAME]:Destroy()
 end
 
--- 🚀 Start GUI
 local app = GUI.new({
     Config = Config,
     Utils = Utils,
@@ -75,7 +56,4 @@ local app = GUI.new({
 })
 
 app:Initialize()
-
-print("✅ Universal Trade V7.1 (Modular) Loaded!")
-print("📁 Press [T] to toggle GUI")
-print("🔗 Modules loaded from: " .. BASE_URL)
+print("✅ System Loaded! Press [T] to toggle.")
