@@ -1,12 +1,10 @@
 -- ui_factory.lua
--- UI Component Factory
-
 local UserInputService = game:GetService("UserInputService")
-
 local UIFactory = {}
+UIFactory.Config = nil -- จะถูกตั้งค่าจาก main.lua
 
 function UIFactory.CreateButton(props)
-    local Config = require(script.Parent.config)
+    local Config = UIFactory.Config
     local THEME = Config.THEME
     local CONFIG = Config.CONFIG
     
@@ -31,7 +29,7 @@ function UIFactory.CreateButton(props)
 end
 
 function UIFactory.CreateLabel(props)
-    local Config = require(script.Parent.config)
+    local Config = UIFactory.Config
     local THEME = Config.THEME
     
     local lbl = Instance.new("TextLabel")
@@ -48,7 +46,7 @@ function UIFactory.CreateLabel(props)
 end
 
 function UIFactory.CreateFrame(props)
-    local Config = require(script.Parent.config)
+    local Config = UIFactory.Config
     local THEME = Config.THEME
     local CONFIG = Config.CONFIG
     
@@ -72,7 +70,7 @@ function UIFactory.CreateFrame(props)
 end
 
 function UIFactory.CreateScrollingFrame(props)
-    local Config = require(script.Parent.config)
+    local Config = UIFactory.Config
     local CONFIG = Config.CONFIG
     
     local scroll = Instance.new("ScrollingFrame")
@@ -98,9 +96,8 @@ function UIFactory.CreateScrollingFrame(props)
 end
 
 function UIFactory.AddCorner(instance, radius)
-    local Config = require(script.Parent.config)
+    local Config = UIFactory.Config
     local CONFIG = Config.CONFIG
-    
     local corner = Instance.new("UICorner", instance)
     corner.CornerRadius = UDim.new(0, radius or CONFIG.CORNER_RADIUS)
     return corner
