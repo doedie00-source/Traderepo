@@ -1,5 +1,5 @@
 -- gui.lua
--- Main GUI Controller (Modular Version)
+-- Main GUI Controller - FIXED VERSION (No Overlap)
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -12,7 +12,6 @@ GUI.__index = GUI
 function GUI.new(deps)
     local self = setmetatable({}, GUI)
     
-    -- Dependencies
     self.Config = deps.Config
     self.Utils = deps.Utils
     self.UIFactory = deps.UIFactory
@@ -20,7 +19,6 @@ function GUI.new(deps)
     self.InventoryManager = deps.InventoryManager
     self.TradeManager = deps.TradeManager
     
-    -- Injected Tabs
     self.TabsModules = deps.Tabs or {}
     
     self.ScreenGui = nil
@@ -36,12 +34,10 @@ function GUI:Initialize()
     local CONFIG = self.Config.CONFIG
     local THEME = self.Config.THEME
 
-    -- Cleanup Old GUI
     if CoreGui:FindFirstChild(CONFIG.GUI_NAME) then
         CoreGui[CONFIG.GUI_NAME]:Destroy()
     end
     
-    -- ScreenGui
     self.ScreenGui = Instance.new("ScreenGui")
     self.ScreenGui.Name = CONFIG.GUI_NAME
     self.ScreenGui.Parent = CoreGui
@@ -49,10 +45,8 @@ function GUI:Initialize()
     self.ScreenGui.DisplayOrder = 100
     self.ScreenGui.IgnoreGuiInset = true
 
-    -- Mini Icon
     self:CreateMiniIcon()
     
-    -- Main Window
     self.MainFrame = Instance.new("Frame", self.ScreenGui)
     self.MainFrame.Name = "MainWindow"
     self.MainFrame.Size = CONFIG.MAIN_WINDOW_SIZE
@@ -66,25 +60,22 @@ function GUI:Initialize()
     self.UIFactory.AddCorner(self.MainFrame, 12)
     self.UIFactory.AddStroke(self.MainFrame, THEME.GlassStroke, 1, 0.6)
     
-    -- Title Bar
     self:CreateTitleBar()
-    
-    -- Sidebar
     self:CreateSidebar()
     
-    -- Content Area
+    -- ✨ Content Area - ปรับให้ไม่ทับ StatusBar (36px)
     self.ContentArea = Instance.new("Frame", self.MainFrame)
     self.ContentArea.Name = "ContentArea"
-    self.ContentArea.Size = UDim2.new(1, -CONFIG.SIDEBAR_WIDTH - 18, 1, -90)  -- ✨ เพิ่ม margin ล่าง: -52 → -90 (เผื่อ StatusBar 36px + spacing)
+    self.ContentArea.Size = UDim2.new(1, -CONFIG.SIDEBAR_WIDTH - 18, 1, -82)  -- -82 = Title 42px + StatusBar 40px
     self.ContentArea.Position = UDim2.new(0, CONFIG.SIDEBAR_WIDTH + 10, 0, 42)
     self.ContentArea.BackgroundTransparency = 1
     self.ContentArea.BorderSizePixel = 0
 
-    -- Status Bar
+    -- ✨ Status Bar - ปรับให้ไม่ซ้อนกับ Floating Buttons
     self.StatusLabel = self.UIFactory.CreateLabel({
         Parent = self.MainFrame,
         Text = "🟢 Ready",
-        Size = UDim2.new(1, -16, 0, 32),
+        Size = UDim2.new(1, -16, 0, 30),
         Position = UDim2.new(0, 8, 1, -36),
         TextColor = THEME.TextGray,
         TextSize = 11,
@@ -95,9 +86,8 @@ function GUI:Initialize()
     self.StatusLabel.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
     self.StatusLabel.BackgroundTransparency = 0.5
     self.StatusLabel.BorderSizePixel = 0
-    self.StatusLabel.ZIndex = 100  -- ✨ กำหนด ZIndex (ต่ำกว่า ActionBar)
+    self.StatusLabel.ZIndex = 100
 
-    -- เส้นบนแบ่ง zone
     local topLine = Instance.new("Frame", self.StatusLabel)
     topLine.Size = UDim2.new(1, 0, 0, 1)
     topLine.BackgroundColor3 = THEME.GlassStroke
@@ -105,17 +95,14 @@ function GUI:Initialize()
     topLine.BorderSizePixel = 0
     topLine.ZIndex = 101
 
-    -- Padding
     local padding = Instance.new("UIPadding", self.StatusLabel)
     padding.PaddingLeft = UDim.new(0, 12)
     padding.PaddingRight = UDim.new(0, 12)
 
-    -- จัดการข้อความยาว
     self.StatusLabel.TextWrapped = true
     self.StatusLabel.TextYAlignment = Enum.TextYAlignment.Center
     self.StatusLabel.AutomaticSize = Enum.AutomaticSize.Y
 
-    -- Start
     self:SwitchTab("Players")
     self:StartMonitoring()
     self:SetupKeybind()
@@ -157,7 +144,6 @@ function GUI:CreateTitleBar()
     
     self.UIFactory.AddCorner(titleBar, 12)
     
-    -- Title
     local titleLabel = self.UIFactory.CreateLabel({
         Parent = titleBar,
         Text = "  ⚡ Universal Trader",
@@ -168,7 +154,6 @@ function GUI:CreateTitleBar()
         TextXAlign = Enum.TextXAlignment.Left
     })
     
-    -- Version Badge
     local versionBadge = Instance.new("Frame", titleBar)
     versionBadge.Size = UDim2.new(0, 60, 0, 20)
     versionBadge.Position = UDim2.new(0, 180, 0.5, -10)
@@ -186,7 +171,6 @@ function GUI:CreateTitleBar()
         Font = Enum.Font.GothamBold
     })
     
-    -- Close Button
     self.UIFactory.CreateButton({
         Size = UDim2.new(0, 30, 0, 30),
         Position = UDim2.new(1, -34, 0, 4),
@@ -199,7 +183,6 @@ function GUI:CreateTitleBar()
         OnClick = function() self.ScreenGui:Destroy() end
     })
     
-    -- Minimize Button
     self.UIFactory.CreateButton({
         Size = UDim2.new(0, 30, 0, 30),
         Position = UDim2.new(1, -68, 0, 4),
@@ -219,9 +202,10 @@ function GUI:CreateSidebar()
     local CONFIG = self.Config.CONFIG
     local THEME = self.Config.THEME
     
+    -- ✨ ปรับ Sidebar ให้ไม่ทะลุ StatusBar (36px spacing ด้านล่าง)
     local sidebar = Instance.new("Frame", self.MainFrame)
     sidebar.Name = "Sidebar"
-    sidebar.Size = UDim2.new(0, CONFIG.SIDEBAR_WIDTH, 1, -50)
+    sidebar.Size = UDim2.new(0, CONFIG.SIDEBAR_WIDTH, 1, -82)  -- -82 = Title 42px + StatusBar 40px
     sidebar.Position = UDim2.new(0, 8, 0, 42)
     sidebar.BackgroundColor3 = THEME.GlassBg
     sidebar.BackgroundTransparency = THEME.GlassTransparency
@@ -230,7 +214,6 @@ function GUI:CreateSidebar()
     self.UIFactory.AddCorner(sidebar, 10)
     self.UIFactory.AddStroke(sidebar, THEME.GlassStroke, 1, 0.7)
     
-    -- Logo Area
     local logoFrame = Instance.new("Frame", sidebar)
     logoFrame.Size = UDim2.new(1, 0, 0, 50)
     logoFrame.BackgroundTransparency = 1
@@ -244,7 +227,6 @@ function GUI:CreateSidebar()
         Font = Enum.Font.GothamBold
     })
     
-    -- Buttons Container
     local btnContainer = Instance.new("Frame", sidebar)
     btnContainer.Size = UDim2.new(1, -12, 1, -65)
     btnContainer.Position = UDim2.new(0, 6, 0, 58)
@@ -254,7 +236,6 @@ function GUI:CreateSidebar()
     layout.Padding = UDim.new(0, CONFIG.BUTTON_PADDING)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     
-    -- Create Tab Buttons
     self:CreateSidebarButton(btnContainer, "Players", "👥 Players")
     self:CreateSidebarButton(btnContainer, "Dupe", "✨ Dupe")
 end
@@ -284,11 +265,9 @@ function GUI:SwitchTab(tabName)
     
     self.StateManager.currentMainTab = tabName
     
-    -- Update Button States
     for name, btn in pairs(self.SidebarButtons) do
         local isSelected = (name == tabName)
         
-        -- Tween Color
         local targetColor = isSelected and THEME.AccentPurple or THEME.BtnDefault
         local targetTextColor = isSelected and THEME.TextWhite or THEME.TextGray
         
@@ -301,13 +280,11 @@ function GUI:SwitchTab(tabName)
         }):Play()
     end
     
-    -- Clear Content
     for _, child in pairs(self.ContentArea:GetChildren()) do
         child:Destroy()
     end
     self.ActiveTabInstance = nil
     
-    -- Load New Tab
     if tabName == "Players" and self.TabsModules.Players then
         local tab = self.TabsModules.Players.new({
             UIFactory = self.UIFactory,
@@ -364,12 +341,10 @@ function GUI:StartMonitoring()
         local missingCounter = 0
         
         while self.ScreenGui.Parent do
-            -- Update Players Tab Buttons
             if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.UpdateButtonStates then
                 self.ActiveTabInstance:UpdateButtonStates()
             end
 
-            -- Trade Monitor
             if self.Utils.IsTradeActive() then
                 missingCounter = 0
             else
@@ -393,7 +368,6 @@ function GUI:StartMonitoring()
         end
     end)
     
-    -- Player Events
     Players.PlayerAdded:Connect(function()
         if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance then
             self.ActiveTabInstance:RefreshList()
