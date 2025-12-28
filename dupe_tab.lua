@@ -1,5 +1,5 @@
 -- tabs/dupe_tab.lua
--- Dupe Tab Module (Items, Crates, Pets)
+-- Dupe Tab Module - FIXED RIGHT ALIGN INFO
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,7 +9,6 @@ local LocalPlayer = Players.LocalPlayer
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local ReplicaListener = Knit.GetController("ReplicaListener")
 
--- Load Game Info
 local SuccessLoadCrates, CratesInfo = pcall(function() 
     return require(ReplicatedStorage.GameInfo.CratesInfo) 
 end)
@@ -33,12 +32,13 @@ function DupeTab.new(deps)
     self.Utils = deps.Utils
     self.Config = deps.Config
     self.StatusLabel = deps.StatusLabel
+    self.InfoLabel = deps.InfoLabel -- ✨ รับ InfoLabel มาใช้
     self.ScreenGui = deps.ScreenGui
     
     self.Container = nil
     self.SubTabButtons = {}
     self.CurrentSubTab = "Items"
-    self.ActionBar = nil
+    self.FloatingButtons = {} 
     self.TooltipRef = nil
     
     return self
@@ -50,15 +50,16 @@ function DupeTab:Init(parent)
     -- Header
     local header = Instance.new("Frame", parent)
     header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 90)
+    header.Size = UDim2.new(1, 0, 0, 72)
     header.BackgroundTransparency = 1
     
     local title = self.UIFactory.CreateLabel({
         Parent = header,
         Text = "✨ Magic Dupe System",
-        Size = UDim2.new(1, 0, 0, 30),
+        Size = UDim2.new(1, -8, 0, 24),
+        Position = UDim2.new(0, 8, 0, 0),
         TextColor = THEME.TextWhite,
-        TextSize = 18,
+        TextSize = 15,
         Font = Enum.Font.GothamBold,
         TextXAlign = Enum.TextXAlignment.Left
     })
@@ -66,23 +67,23 @@ function DupeTab:Init(parent)
     local subtitle = self.UIFactory.CreateLabel({
         Parent = header,
         Text = "Dupe items, crates, and pets using trade exploit",
-        Size = UDim2.new(1, 0, 0, 20),
-        Position = UDim2.new(0, 0, 0, 30),
+        Size = UDim2.new(1, -8, 0, 16),
+        Position = UDim2.new(0, 8, 0, 24),
         TextColor = THEME.TextDim,
-        TextSize = 11,
+        TextSize = 10,
         Font = Enum.Font.Gotham,
         TextXAlign = Enum.TextXAlignment.Left
     })
     
     -- Sub-tabs
     local tabsContainer = Instance.new("Frame", header)
-    tabsContainer.Size = UDim2.new(1, 0, 0, 35)
-    tabsContainer.Position = UDim2.new(0, 0, 0, 55)
+    tabsContainer.Size = UDim2.new(1, -8, 0, 32)
+    tabsContainer.Position = UDim2.new(0, 8, 0, 42)
     tabsContainer.BackgroundTransparency = 1
     
     local tabsLayout = Instance.new("UIListLayout", tabsContainer)
     tabsLayout.FillDirection = Enum.FillDirection.Horizontal
-    tabsLayout.Padding = UDim.new(0, 8)
+    tabsLayout.Padding = UDim.new(0, 6)
     
     self:CreateSubTab(tabsContainer, "Items", "📦 Items")
     self:CreateSubTab(tabsContainer, "Crates", "🎁 Crates")
@@ -91,18 +92,80 @@ function DupeTab:Init(parent)
     -- Content Container
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
-        Size = UDim2.new(1, 0, 1, -140),
-        Position = UDim2.new(0, 0, 0, 95)
+        Size = UDim2.new(1, 0, 1, -76),
+        Position = UDim2.new(0, 0, 0, 74)
     })
     
-    -- Action Bar
-    self:CreateActionBar(parent)
-    
-    -- Warning Box (for Items tab)
-    self:CreateWarningBox(parent)
+    self:CreateFloatingButtons(parent)
     
     -- Load First Tab
     self:SwitchSubTab("Items")
+end
+
+function DupeTab:CreateFloatingButtons(parent)
+    local THEME = self.Config.THEME
+    
+    local spacing = 6
+    local btnWidth = 90
+    local btnHeight = 30
+    local startX = -8 
+    
+    self.FloatingButtons.BtnDupePet = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, btnWidth, 0, btnHeight),
+        Position = UDim2.new(1, startX - btnWidth, 1, -36),
+        Text = "✨ DUPE",
+        BgColor = THEME.AccentGreen,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        Parent = parent,
+        OnClick = function() self:OnDupePets() end
+    })
+    self.FloatingButtons.BtnDupePet.ZIndex = 101
+    self.FloatingButtons.BtnDupePet.Visible = false
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnDupePet, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
+    
+    self.FloatingButtons.BtnEvoPet = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, btnWidth + 15, 0, btnHeight),
+        Position = UDim2.new(1, startX - btnWidth*2 - spacing - 15, 1, -36),
+        Text = "🧬 EVOLVE",
+        BgColor = THEME.AccentPurple,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        Parent = parent,
+        OnClick = function() self:OnEvolvePets() end
+    })
+    self.FloatingButtons.BtnEvoPet.ZIndex = 101
+    self.FloatingButtons.BtnEvoPet.Visible = false
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnEvoPet, Color3.fromRGB(120, 130, 255), 1.5, 0.3)
+    
+    self.FloatingButtons.BtnDeletePet = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, btnWidth, 0, btnHeight),
+        Position = UDim2.new(1, startX - btnWidth*3 - spacing*2 - 15, 1, -36),
+        Text = "🗑️ DELETE",
+        BgColor = THEME.Fail,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        Parent = parent,
+        OnClick = function() self:OnDeletePets() end
+    })
+    self.FloatingButtons.BtnDeletePet.ZIndex = 101
+    self.FloatingButtons.BtnDeletePet.Visible = false
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnDeletePet, Color3.fromRGB(255, 100, 100), 1.5, 0.3)
+    
+    self.FloatingButtons.BtnAddAll1k = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, 130, 0, btnHeight),
+        Position = UDim2.new(1, -138, 1, -36),
+        Text = "➕ ADD 1K ALL",
+        BgColor = THEME.AccentGreen,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        Parent = parent
+    })
+    if self.FloatingButtons.BtnAddAll1k then
+        self.FloatingButtons.BtnAddAll1k.ZIndex = 101
+        self.FloatingButtons.BtnAddAll1k.Visible = false
+        self.UIFactory.AddStroke(self.FloatingButtons.BtnAddAll1k, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
+    end
 end
 
 function DupeTab:CreateSubTab(parent, name, text)
@@ -111,12 +174,12 @@ function DupeTab:CreateSubTab(parent, name, text)
     local btn = self.UIFactory.CreateButton({
         Parent = parent,
         Text = text,
-        Size = UDim2.new(0, 110, 0, 35),
+        Size = UDim2.new(0, 95, 0, 32),
         BgColor = THEME.BtnDefault,
         TextColor = THEME.TextGray,
-        TextSize = 12,
+        TextSize = 11,
         Font = Enum.Font.GothamBold,
-        CornerRadius = 8,
+        CornerRadius = 6,
         OnClick = function()
             self:SwitchSubTab(name)
         end
@@ -133,104 +196,42 @@ function DupeTab:SwitchSubTab(name)
     self.StateManager.selectedPets = {}
     self.StateManager.selectedCrates = {}
     
-    -- Update Buttons
+    -- Update Buttons Style
     for tabName, btn in pairs(self.SubTabButtons) do
         local isSelected = (tabName == name)
         btn.BackgroundColor3 = isSelected and THEME.AccentBlue or THEME.BtnDefault
         btn.TextColor3 = isSelected and THEME.TextWhite or THEME.TextGray
     end
     
+    -- Update Floating Buttons Visibility
+    if name == "Pets" then
+        if self.FloatingButtons.BtnDeletePet then self.FloatingButtons.BtnDeletePet.Visible = true end
+        if self.FloatingButtons.BtnEvoPet then self.FloatingButtons.BtnEvoPet.Visible = true end
+        if self.FloatingButtons.BtnDupePet then self.FloatingButtons.BtnDupePet.Visible = true end
+        if self.FloatingButtons.BtnAddAll1k then self.FloatingButtons.BtnAddAll1k.Visible = false end
+        
+    elseif name == "Crates" then
+        if self.FloatingButtons.BtnDeletePet then self.FloatingButtons.BtnDeletePet.Visible = false end
+        if self.FloatingButtons.BtnEvoPet then self.FloatingButtons.BtnEvoPet.Visible = false end
+        if self.FloatingButtons.BtnDupePet then self.FloatingButtons.BtnDupePet.Visible = false end
+        if self.FloatingButtons.BtnAddAll1k then self.FloatingButtons.BtnAddAll1k.Visible = true end
+        
+    else  -- Items
+        for _, btn in pairs(self.FloatingButtons) do
+            if btn then btn.Visible = false end
+        end
+    end
+    
+    -- ✨ Update Info Label (Warning Text)
+    if self.InfoLabel then
+        if name == "Items" then
+            self.InfoLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K"
+        else
+            self.InfoLabel.Text = "" -- เคลียร์ข้อความถ้าไม่ใช่หน้า Items
+        end
+    end
+    
     self:RefreshInventory()
-end
-
-function DupeTab:CreateActionBar(parent)
-    local THEME = self.Config.THEME
-    
-    self.ActionBar = Instance.new("Frame", parent)
-    self.ActionBar.Name = "ActionBar"
-    self.ActionBar.Size = UDim2.new(1, 0, 0, 45)
-    self.ActionBar.Position = UDim2.new(0, 0, 1, -45)
-    self.ActionBar.BackgroundColor3 = THEME.GlassBg
-    self.ActionBar.BackgroundTransparency = THEME.GlassTransparency
-    self.ActionBar.BorderSizePixel = 0
-    self.ActionBar.Visible = false
-    
-    self.UIFactory.AddCorner(self.ActionBar, 10)
-    self.UIFactory.AddStroke(self.ActionBar, THEME.GlassStroke, 1, 0.7)
-    
-    -- Pet Actions
-    self.BtnDeletePet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 90, 0, 32),
-        Position = UDim2.new(0, 8, 0.5, -16),
-        Text = "🗑️ DELETE",
-        BgColor = THEME.Fail,
-        Parent = self.ActionBar,
-        OnClick = function() self:OnDeletePets() end
-    })
-    
-    self.BtnEvoPet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 130, 0, 32),
-        Position = UDim2.new(0.5, -65, 0.5, -16),
-        Text = "EVOLVE",
-        BgColor = THEME.BtnDefault,
-        Parent = self.ActionBar,
-        OnClick = function() self:OnEvolvePets() end
-    })
-    
-    self.BtnDupePet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 90, 0, 32),
-        Position = UDim2.new(1, -98, 0.5, -16),
-        Text = "✨ DUPE",
-        BgColor = THEME.BtnDupe,
-        Parent = self.ActionBar,
-        OnClick = function() self:OnDupePets() end
-    })
-    
-    -- Crate Actions
-    self.BtnAddAll1k = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 140, 0, 32),
-        Position = UDim2.new(1, -148, 0.5, -16),
-        Text = "ADD 1K ALL",
-        BgColor = THEME.AccentGreen,
-        Parent = self.ActionBar
-    })
-    self.UIFactory.AddStroke(self.BtnAddAll1k, Color3.new(1,1,1), 1, 0.6)
-end
-
-function DupeTab:CreateWarningBox(parent)
-    local THEME = self.Config.THEME
-    
-    self.WarningBox = Instance.new("Frame", parent)
-    self.WarningBox.Name = "WarningBox"
-    self.WarningBox.Size = UDim2.new(1, 0, 0, 60)
-    self.WarningBox.Position = UDim2.new(0, 0, 1, -110)
-    self.WarningBox.BackgroundColor3 = Color3.fromRGB(40, 30, 20)
-    self.WarningBox.BackgroundTransparency = 0.2
-    self.WarningBox.BorderSizePixel = 0
-    self.WarningBox.Visible = false
-    
-    self.UIFactory.AddCorner(self.WarningBox, 10)
-    self.UIFactory.AddStroke(self.WarningBox, THEME.Warning, 1.5, 0.4)
-    
-    local icon = self.UIFactory.CreateLabel({
-        Parent = self.WarningBox,
-        Text = "⚠️",
-        Size = UDim2.new(0, 40, 1, 0),
-        TextSize = 24,
-        Font = Enum.Font.GothamBold
-    })
-    
-    local text = self.UIFactory.CreateLabel({
-        Parent = self.WarningBox,
-        Text = "WARNING: Do not exceed limits!\nSCROLLS: ~150 | TICKETS: 10k | POTIONS: 2k\nRisk of ban if hoarding excessive amounts.",
-        Size = UDim2.new(1, -50, 1, -10),
-        Position = UDim2.new(0, 45, 0, 5),
-        TextColor = THEME.Warning,
-        TextSize = 10,
-        Font = Enum.Font.GothamBold,
-        TextXAlign = Enum.TextXAlignment.Left
-    })
-    text.TextWrapped = true
 end
 
 function DupeTab:RefreshInventory()
@@ -239,17 +240,6 @@ function DupeTab:RefreshInventory()
         if not child:IsA("UIListLayout") and not child:IsA("UIGridLayout") and not child:IsA("UIPadding") then
             child:Destroy()
         end
-    end
-    
-    -- Hide/Show Action Bar and Warning
-    self.ActionBar.Visible = (self.CurrentSubTab == "Pets" or self.CurrentSubTab == "Crates")
-    self.WarningBox.Visible = (self.CurrentSubTab == "Items")
-    
-    -- Update Container Size
-    if self.CurrentSubTab == "Items" then
-        self.Container.Size = UDim2.new(1, 0, 1, -210)
-    elseif self.CurrentSubTab == "Pets" or self.CurrentSubTab == "Crates" then
-        self.Container.Size = UDim2.new(1, 0, 1, -185)
     end
     
     -- Render Content
@@ -262,37 +252,58 @@ function DupeTab:RefreshInventory()
     end
 end
 
--- ============================
--- ITEMS TAB RENDERING
--- ============================
+-- ✨ ลบฟังก์ชัน UpdateStatusWarning เก่าที่ทับซ้อนออก หรือเปลี่ยนให้เช็ค InfoLabel แทน
+function DupeTab:UpdateStatusWarning()
+    -- ฟังก์ชันนี้ไม่จำเป็นแล้ว เพราะเราจัดการใน SwitchSubTab 
+    -- แต่ใส่ไว้กันเหนียวเผื่อเรียกใช้ที่อื่น
+    if self.CurrentSubTab == "Items" and self.InfoLabel then
+        self.InfoLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K"
+    elseif self.InfoLabel then
+        self.InfoLabel.Text = ""
+    end
+end
+
+-- ============================ RENDERING (ตัดส่วนที่ไม่เกี่ยวข้องออกเพื่อความกระชับ) ============================
+
 function DupeTab:RenderItemDupeGrid()
     local THEME = self.Config.THEME
     local DUPE_RECIPES = self.Config.DUPE_RECIPES
     
-    self.Container.ScrollBarThickness = 0
+    self.Container.ScrollBarThickness = 4
     self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)
     
     if self.Container:FindFirstChild("UIListLayout") then
         self.Container.UIListLayout:Destroy()
     end
     
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
-    padding.PaddingTop = UDim.new(0, 10)
-    padding.PaddingLeft = UDim.new(0, 10)
-    padding.PaddingRight = UDim.new(0, 10)
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 12)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
-    layout.CellPadding = UDim2.new(0, 8, 0, 8)
-    layout.CellSize = UDim2.new(0, 105, 0, 130)
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.CellPadding = UDim2.new(0, 6, 0, 6)
+    layout.CellSize = UDim2.new(0, 92, 0, 115)
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
     
     local recipes = DUPE_RECIPES.Items or {}
     local playerData = self.InventoryManager.GetPlayerData()
+    
+    -- Ensure warning is shown
+    self:UpdateStatusWarning()
     
     for _, recipe in ipairs(recipes) do
         self:CreateItemCard(recipe, playerData)
     end
 end
+
+-- ... (ส่วน CreateItemCard และฟังก์ชันอื่นๆ เหมือนเดิม ไม่ต้องแก้) ...
+
+-- (ใส่ฟังก์ชันที่เหลือ CreateItemCard, RenderCrateGrid, etc. กลับเข้ามาตามเดิมจากไฟล์ก่อนหน้า)
+-- เพื่อให้ Script ทำงานได้สมบูรณ์ ผมจะใส่ function ที่จำเป็นที่เหลือไว้ให้ครบครับ
 
 function DupeTab:CreateItemCard(recipe, playerData)
     local THEME = self.Config.THEME
@@ -419,27 +430,28 @@ function DupeTab:OnItemCardClick(recipe, isOwned, isReady, foundCount, totalNeed
     end)
 end
 
--- ============================
--- CRATES TAB RENDERING
--- ============================
 function DupeTab:RenderCrateGrid()
     local THEME = self.Config.THEME
     
-    self.Container.ScrollBarThickness = 0
+    self.Container.ScrollBarThickness = 4
     self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)
     
     if self.Container:FindFirstChild("UIListLayout") then
         self.Container.UIListLayout:Destroy()
     end
     
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
-    padding.PaddingTop = UDim.new(0, 10)
-    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 12)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
-    layout.CellPadding = UDim2.new(0, 8, 0, 8)
-    layout.CellSize = UDim2.new(0, 100, 0, 115)
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.CellPadding = UDim2.new(0, 6, 0, 6)
+    layout.CellSize = UDim2.new(0, 88, 0, 102)
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
     
     local replica = ReplicaListener:GetReplica()
     local playerData = replica and replica.Data
@@ -460,11 +472,12 @@ function DupeTab:RenderCrateGrid()
     end
     table.sort(cratesList, function(a, b) return a.DisplayName < b.DisplayName end)
     
-    -- Add All Button Logic
     if self.AddAllConn then self.AddAllConn:Disconnect() end
-    self.AddAllConn = self.BtnAddAll1k.MouseButton1Click:Connect(function()
-        self:OnAddAllCrates(cratesList, inventoryCrates)
-    end)
+    if self.FloatingButtons.BtnAddAll1k then
+        self.AddAllConn = self.FloatingButtons.BtnAddAll1k.MouseButton1Click:Connect(function()
+            self:OnAddAllCrates(cratesList, inventoryCrates)
+        end)
+    end
     
     for _, crate in ipairs(cratesList) do
         self:CreateCrateCard(crate, inventoryCrates)
@@ -585,8 +598,10 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
         return
     end
     
-    self.BtnAddAll1k.Active = false
-    self.BtnAddAll1k.Text = "ADDING..."
+    if self.FloatingButtons.BtnAddAll1k then
+        self.FloatingButtons.BtnAddAll1k.Active = false
+        self.FloatingButtons.BtnAddAll1k.Text = "ADDING..."
+    end
     self.StateManager:SetStatus("🚀 Adding all crates (1,000 each)...", THEME.AccentBlue, self.StatusLabel)
     
     task.spawn(function()
@@ -604,15 +619,15 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
             end
         end
         self.StateManager:SetStatus("✅ Added " .. addedCount .. " types!", THEME.Success, self.StatusLabel)
-        self.BtnAddAll1k.Active = true
-        self.BtnAddAll1k.Text = "ADD 1K ALL"
+        
+        if self.FloatingButtons.BtnAddAll1k then
+            self.FloatingButtons.BtnAddAll1k.Active = true
+            self.FloatingButtons.BtnAddAll1k.Text = "➕ ADD 1K ALL"
+        end
         self:RefreshInventory()
     end)
 end
 
--- ============================
--- PETS TAB RENDERING
--- ============================
 function DupeTab:RenderPetDupeGrid()
     local THEME = self.Config.THEME
     
@@ -630,7 +645,6 @@ function DupeTab:RenderPetDupeGrid()
         ["I2Pet"] = true
     }
     
-    -- Tooltip Setup
     if not self.TooltipRef then
         local tip = Instance.new("TextLabel", self.ScreenGui)
         tip.Name = "GlobalTooltip"
@@ -653,21 +667,25 @@ function DupeTab:RenderPetDupeGrid()
         end)
     end
     
-    self.Container.ScrollBarThickness = 0
+    self.Container.ScrollBarThickness = 4
     self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)
     
     if self.Container:FindFirstChild("UIListLayout") then
         self.Container.UIListLayout:Destroy()
     end
     
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
-    padding.PaddingTop = UDim.new(0, 10)
-    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 12)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
-    layout.CellSize = UDim2.new(0, 105, 0, 125)
-    layout.CellPadding = UDim2.new(0, 8, 0, 8)
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.CellSize = UDim2.new(0, 92, 0, 110)
+    layout.CellPadding = UDim2.new(0, 6, 0, 6)
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
     
     local replica = ReplicaListener:GetReplica()
     local MyPetsData = replica and replica.Data.PetsService and replica.Data.PetsService.Pets
@@ -913,9 +931,6 @@ function DupeTab:CreatePetCard(petData, EquippedUUIDs, allData)
     end)
 end
 
--- ============================
--- PET ACTION HANDLERS
--- ============================
 function DupeTab:OnDeletePets()
     local THEME = self.Config.THEME
     
@@ -938,7 +953,7 @@ function DupeTab:OnDeletePets()
 end
 
 function DupeTab:OnEvolvePets()
-    if self.BtnEvoPet:GetAttribute("IsValid") then
+    if self.FloatingButtons.BtnEvoPet and self.FloatingButtons.BtnEvoPet:GetAttribute("IsValid") then
         self.TradeManager.ExecuteEvolution(self.StatusLabel, function()
             task.wait(0.6)
             self:RefreshInventory()
@@ -952,7 +967,7 @@ function DupeTab:OnDupePets()
 end
 
 function DupeTab:UpdateEvoButtonState()
-    if not self.BtnEvoPet then return end
+    if not self.FloatingButtons.BtnEvoPet then return end
     
     local THEME = self.Config.THEME
     local replica = ReplicaListener:GetReplica()
@@ -993,37 +1008,47 @@ function DupeTab:UpdateEvoButtonState()
         end
         
         if not allSameName then
-            btnText = "MISMATCH NAME"
+            btnText = "❌ MISMATCH NAME"
         elseif not allSameEvo then
-            btnText = "MISMATCH EVO"
+            btnText = "❌ MISMATCH EVO"
         elseif not notMaxLevel then
-            btnText = "MAX LEVEL"
+            btnText = "🚫 MAX LEVEL"
         else
             btnText = "🧬 EVOLVE NOW"
             isValid = true
         end
     end
     
-    self.BtnEvoPet.Text = btnText
+    self.FloatingButtons.BtnEvoPet.Text = btnText
     
     if isValid then
-        self.BtnEvoPet.BackgroundColor3 = THEME.AccentPurple
-        self.BtnEvoPet.AutoButtonColor = true
-        self.BtnEvoPet.TextTransparency = 0
+        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = THEME.AccentPurple
+        self.FloatingButtons.BtnEvoPet.AutoButtonColor = true
+        self.FloatingButtons.BtnEvoPet.TextTransparency = 0
+        self.FloatingButtons.BtnEvoPet.TextColor3 = THEME.TextWhite
+        
+        if self.FloatingButtons.BtnEvoPet:FindFirstChild("UIStroke") then
+            self.FloatingButtons.BtnEvoPet.UIStroke.Color = Color3.fromRGB(150, 160, 255)
+            self.FloatingButtons.BtnEvoPet.UIStroke.Thickness = 2
+            self.FloatingButtons.BtnEvoPet.UIStroke.Transparency = 0.2
+        end
     else
-        self.BtnEvoPet.BackgroundColor3 = THEME.BtnDisabled
-        self.BtnEvoPet.AutoButtonColor = false
-        self.BtnEvoPet.TextTransparency = 0.5
+        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        self.FloatingButtons.BtnEvoPet.AutoButtonColor = false
+        self.FloatingButtons.BtnEvoPet.TextTransparency = 0.3
+        self.FloatingButtons.BtnEvoPet.TextColor3 = Color3.fromRGB(100, 100, 105)
+        
+        if self.FloatingButtons.BtnEvoPet:FindFirstChild("UIStroke") then
+            self.FloatingButtons.BtnEvoPet.UIStroke.Color = Color3.fromRGB(60, 60, 70)
+            self.FloatingButtons.BtnEvoPet.UIStroke.Thickness = 1
+            self.FloatingButtons.BtnEvoPet.UIStroke.Transparency = 0.6
+        end
     end
     
-    self.BtnEvoPet:SetAttribute("IsValid", isValid)
+    self.FloatingButtons.BtnEvoPet:SetAttribute("IsValid", isValid)
 end
 
--- ============================
--- POPUPS
--- ============================
 function DupeTab:ShowQuantityPopup(itemData, onConfirm)
-    -- Implementation same as original
     local THEME = self.Config.THEME
     
     local PopupFrame = Instance.new("Frame", self.ScreenGui)
@@ -1034,33 +1059,33 @@ function DupeTab:ShowQuantityPopup(itemData, onConfirm)
     PopupFrame.BorderSizePixel = 0
     
     local popupBox = Instance.new("Frame", PopupFrame)
-    popupBox.Size = UDim2.new(0, 260, 0, 160)
-    popupBox.Position = UDim2.new(0.5, -130, 0.5, -80)
+    popupBox.Size = UDim2.new(0, 240, 0, 150)
+    popupBox.Position = UDim2.new(0.5, -120, 0.5, -75)
     popupBox.BackgroundColor3 = THEME.GlassBg
     popupBox.ZIndex = 3001
     popupBox.BorderSizePixel = 0
     
-    self.UIFactory.AddCorner(popupBox, 12)
+    self.UIFactory.AddCorner(popupBox, 10)
     self.UIFactory.AddStroke(popupBox, THEME.AccentPurple, 2, 0)
     
     local titleLabel = self.UIFactory.CreateLabel({
         Parent = popupBox,
         Text = "ENTER AMOUNT",
-        Size = UDim2.new(1, 0, 0, 45),
+        Size = UDim2.new(1, 0, 0, 38),
         TextColor = THEME.TextWhite,
         Font = Enum.Font.GothamBold,
-        TextSize = 14
+        TextSize = 13
     })
     titleLabel.ZIndex = 3002
     
     local input = Instance.new("TextBox", popupBox)
-    input.Size = UDim2.new(0.85, 0, 0, 38)
+    input.Size = UDim2.new(0.85, 0, 0, 34)
     input.Position = UDim2.new(0.075, 0, 0.35, 0)
     input.Text = tostring(itemData.Default or 1)
     input.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     input.TextColor3 = THEME.TextWhite
     input.Font = Enum.Font.Code
-    input.TextSize = 16
+    input.TextSize = 15
     input.ClearTextOnFocus = false
     input.ZIndex = 3002
     input.BorderSizePixel = 0
@@ -1072,18 +1097,18 @@ function DupeTab:ShowQuantityPopup(itemData, onConfirm)
     local inputConn = self.Utils.SanitizeNumberInput(input, maxValue)
     
     local confirmBtn = self.UIFactory.CreateButton({
-        Size = UDim2.new(0.85, 0, 0, 38),
+        Size = UDim2.new(0.85, 0, 0, 34),
         Position = UDim2.new(0.075, 0, 0.7, 0),
         Text = "CONFIRM",
         BgColor = THEME.AccentPurple,
-        CornerRadius = 8,
+        CornerRadius = 6,
         Parent = popupBox
     })
     confirmBtn.ZIndex = 3002
     
     local closeBtn = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 28, 0, 28),
-        Position = UDim2.new(1, -32, 0, 4),
+        Size = UDim2.new(0, 26, 0, 26),
+        Position = UDim2.new(1, -30, 0, 4),
         Text = "✕",
         BgColor = THEME.Fail,
         CornerRadius = 6,
@@ -1117,22 +1142,22 @@ function DupeTab:ShowConfirm(text, onYes)
     ConfirmOverlay.BorderSizePixel = 0
     
     local box = Instance.new("Frame", ConfirmOverlay)
-    box.Size = UDim2.new(0, 340, 0, 170)
-    box.Position = UDim2.new(0.5, -170, 0.5, -85)
+    box.Size = UDim2.new(0, 310, 0, 155)
+    box.Position = UDim2.new(0.5, -155, 0.5, -77.5)
     box.BackgroundColor3 = THEME.GlassBg
     box.ZIndex = 2001
     box.BorderSizePixel = 0
     
-    self.UIFactory.AddCorner(box, 12)
+    self.UIFactory.AddCorner(box, 10)
     self.UIFactory.AddStroke(box, THEME.Fail, 2, 0)
     
     local titleLabel = self.UIFactory.CreateLabel({
         Parent = box,
         Text = text,
-        Size = UDim2.new(1, 0, 0, 55),
-        Position = UDim2.new(0, 0, 0, 10),
+        Size = UDim2.new(1, 0, 0, 48),
+        Position = UDim2.new(0, 0, 0, 8),
         Font = Enum.Font.GothamBold,
-        TextSize = 16,
+        TextSize = 14,
         TextColor = THEME.Fail
     })
     titleLabel.ZIndex = 2002
@@ -1140,29 +1165,29 @@ function DupeTab:ShowConfirm(text, onYes)
     local subLabel = self.UIFactory.CreateLabel({
         Parent = box,
         Text = "Are you sure? This cannot be undone!",
-        Size = UDim2.new(1, -20, 0, 40),
-        Position = UDim2.new(0, 10, 0, 55),
+        Size = UDim2.new(1, -16, 0, 36),
+        Position = UDim2.new(0, 8, 0, 50),
         Font = Enum.Font.Gotham,
-        TextSize = 12,
+        TextSize = 11,
         TextColor = THEME.TextGray
     })
     subLabel.ZIndex = 2002
     subLabel.TextWrapped = true
     
     local btnContainer = Instance.new("Frame", box)
-    btnContainer.Size = UDim2.new(1, 0, 0, 45)
-    btnContainer.Position = UDim2.new(0, 0, 1, -55)
+    btnContainer.Size = UDim2.new(1, 0, 0, 42)
+    btnContainer.Position = UDim2.new(0, 0, 1, -50)
     btnContainer.BackgroundTransparency = 1
     btnContainer.ZIndex = 2002
     
     local layout = Instance.new("UIListLayout", btnContainer)
     layout.FillDirection = Enum.FillDirection.Horizontal
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.Padding = UDim.new(0, 12)
+    layout.Padding = UDim.new(0, 10)
     
     local cancelBtn = self.UIFactory.CreateButton({
         Text = "CANCEL",
-        Size = UDim2.new(0, 110, 0, 38),
+        Size = UDim2.new(0, 100, 0, 34),
         BgColor = THEME.BtnDefault,
         Parent = btnContainer,
         OnClick = function()
@@ -1173,7 +1198,7 @@ function DupeTab:ShowConfirm(text, onYes)
     
     local yesBtn = self.UIFactory.CreateButton({
         Text = "YES, DELETE",
-        Size = UDim2.new(0, 130, 0, 38),
+        Size = UDim2.new(0, 120, 0, 34),
         BgColor = THEME.Fail,
         Parent = btnContainer,
         OnClick = function()
