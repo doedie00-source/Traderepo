@@ -147,67 +147,68 @@ end
 function DupeTab:CreateActionBar(parent)
     local THEME = self.Config.THEME
     
+    -- ✨ ActionBar แบบโปร่งใส ไม่มีพื้นหลัง
     self.ActionBar = Instance.new("Frame", parent)
     self.ActionBar.Name = "ActionBar"
-    self.ActionBar.Size = UDim2.new(1, -16, 0, 48)  -- เพิ่มความสูงจาก 42 → 48
-    self.ActionBar.Position = UDim2.new(0, 8, 1, -52)  -- ปรับตำแหน่งตามความสูงใหม่
-    
-    -- ✨ ปรับ Background ให้เห็นชัดขึ้น
-    self.ActionBar.BackgroundColor3 = Color3.fromRGB(20, 22, 28)  -- เข้มกว่าเดิม
-    self.ActionBar.BackgroundTransparency = 0.05  -- ลด transparency (เดิม 0.15)
+    self.ActionBar.Size = UDim2.new(1, 0, 0, 42)
+    self.ActionBar.Position = UDim2.new(0, 0, 1, -46)  -- ติดกับ StatusLabel
+    self.ActionBar.BackgroundTransparency = 1  -- โปร่งใส 100%
     self.ActionBar.BorderSizePixel = 0
     self.ActionBar.Visible = false
     self.ActionBar.ZIndex = 100
     
-    self.UIFactory.AddCorner(self.ActionBar, 10)
-    
-    -- ✨ เปลี่ยน Stroke ให้มี contrast ชัดขึ้น
-    self.UIFactory.AddStroke(self.ActionBar, Color3.fromRGB(88, 101, 242), 2, 0.4)  -- ใช้สี AccentPurple
-    
-    -- 🔹 Pet Actions - ปรับสีและขนาดให้แยกได้ชัด
-    self.BtnDeletePet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 90, 0, 36),  -- เพิ่มขนาดปุ่ม
-        Position = UDim2.new(0, 8, 0.5, -18),
-        Text = "🗑️ DELETE",
-        BgColor = THEME.Fail,
-        TextSize = 11,
-        Parent = self.ActionBar,
-        OnClick = function() self:OnDeletePets() end
-    })
-    self.UIFactory.AddStroke(self.BtnDeletePet, Color3.fromRGB(255, 100, 100), 1, 0.3)
-    
-    self.BtnEvoPet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 125, 0, 36),
-        Position = UDim2.new(0.5, -62.5, 0.5, -18),
-        Text = "🧬 EVOLVE",
-        BgColor = THEME.AccentPurple,
-        TextSize = 11,
-        Parent = self.ActionBar,
-        OnClick = function() self:OnEvolvePets() end
-    })
-    self.UIFactory.AddStroke(self.BtnEvoPet, Color3.fromRGB(120, 130, 255), 1, 0.3)
+    -- 🔹 Pet Actions - เรียงชิดกันทางขวา
+    local spacing = 6  -- ระยะห่างระหว่างปุ่ม
+    local btnWidth = 95
+    local btnHeight = 36
     
     self.BtnDupePet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 90, 0, 36),
-        Position = UDim2.new(1, -98, 0.5, -18),
+        Size = UDim2.new(0, btnWidth, 0, btnHeight),
+        Position = UDim2.new(1, -btnWidth - 8, 0.5, -btnHeight/2),
         Text = "✨ DUPE",
         BgColor = THEME.AccentGreen,
-        TextSize = 11,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
         Parent = self.ActionBar,
         OnClick = function() self:OnDupePets() end
     })
-    self.UIFactory.AddStroke(self.BtnDupePet, Color3.fromRGB(100, 255, 150), 1, 0.3)
+    self.UIFactory.AddStroke(self.BtnDupePet, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
     
-    -- 🔹 Crate Actions
+    self.BtnEvoPet = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, btnWidth + 20, 0, btnHeight),
+        Position = UDim2.new(1, -(btnWidth*2 + spacing + 28) - 8, 0.5, -btnHeight/2),
+        Text = "🧬 EVOLVE",
+        BgColor = THEME.AccentPurple,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
+        Parent = self.ActionBar,
+        OnClick = function() self:OnEvolvePets() end
+    })
+    self.UIFactory.AddStroke(self.BtnEvoPet, Color3.fromRGB(120, 130, 255), 1.5, 0.3)
+    
+    self.BtnDeletePet = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, btnWidth, 0, btnHeight),
+        Position = UDim2.new(1, -(btnWidth*3 + spacing*2 + 28) - 8, 0.5, -btnHeight/2),
+        Text = "🗑️ DELETE",
+        BgColor = THEME.Fail,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
+        Parent = self.ActionBar,
+        OnClick = function() self:OnDeletePets() end
+    })
+    self.UIFactory.AddStroke(self.BtnDeletePet, Color3.fromRGB(255, 100, 100), 1.5, 0.3)
+    
+    -- 🔹 Crate Actions - ปุ่มเดียวชิดขวา
     self.BtnAddAll1k = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 135, 0, 36),
-        Position = UDim2.new(1, -143, 0.5, -18),
+        Size = UDim2.new(0, 140, 0, btnHeight),
+        Position = UDim2.new(1, -148, 0.5, -btnHeight/2),
         Text = "➕ ADD 1K ALL",
         BgColor = THEME.AccentGreen,
-        TextSize = 11,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
         Parent = self.ActionBar
     })
-    self.UIFactory.AddStroke(self.BtnAddAll1k, Color3.fromRGB(100, 255, 150), 2, 0.3)
+    self.UIFactory.AddStroke(self.BtnAddAll1k, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
 end
 
 -- ปรับปรุง Warning Box ให้อ่านง่ายขึ้น แสดงเป็นแถวเดียว
