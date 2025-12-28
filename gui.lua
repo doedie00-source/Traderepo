@@ -1,5 +1,5 @@
 -- gui.lua
--- Main GUI Controller - FIXED VERSION (No Overlap)
+-- Main GUI Controller - FIXED VERSION (No Overlap & Crash Safety)
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -34,8 +34,9 @@ function GUI:Initialize()
     local CONFIG = self.Config.CONFIG
     local THEME = self.Config.THEME
 
+    -- Clean up old instances
     if CoreGui:FindFirstChild(CONFIG.GUI_NAME) then
-        CoreGui[CONFIG.GUI_NAME]:Destroy()
+        pcall(function() CoreGui[CONFIG.GUI_NAME]:Destroy() end)
     end
     
     self.ScreenGui = Instance.new("ScreenGui")
@@ -63,15 +64,16 @@ function GUI:Initialize()
     self:CreateTitleBar()
     self:CreateSidebar()
     
-    -- ✨ Content Area - ปรับให้ไม่ทับ StatusBar (36px)
+    -- ✨ Content Area - Calculated to avoid overlapping StatusBar
+    -- Height: 100% - (Title 42px + StatusBar 40px) = -82px
     self.ContentArea = Instance.new("Frame", self.MainFrame)
     self.ContentArea.Name = "ContentArea"
-    self.ContentArea.Size = UDim2.new(1, -CONFIG.SIDEBAR_WIDTH - 18, 1, -82)  -- -82 = Title 42px + StatusBar 40px
+    self.ContentArea.Size = UDim2.new(1, -CONFIG.SIDEBAR_WIDTH - 18, 1, -82) 
     self.ContentArea.Position = UDim2.new(0, CONFIG.SIDEBAR_WIDTH + 10, 0, 42)
     self.ContentArea.BackgroundTransparency = 1
     self.ContentArea.BorderSizePixel = 0
 
-    -- ✨ Status Bar - ปรับให้ไม่ซ้อนกับ Floating Buttons
+    -- ✨ Status Bar - Pinned to bottom
     self.StatusLabel = self.UIFactory.CreateLabel({
         Parent = self.MainFrame,
         Text = "🟢 Ready",
@@ -202,10 +204,9 @@ function GUI:CreateSidebar()
     local CONFIG = self.Config.CONFIG
     local THEME = self.Config.THEME
     
-    -- ✨ ปรับ Sidebar ให้ไม่ทะลุ StatusBar (36px spacing ด้านล่าง)
     local sidebar = Instance.new("Frame", self.MainFrame)
     sidebar.Name = "Sidebar"
-    sidebar.Size = UDim2.new(0, CONFIG.SIDEBAR_WIDTH, 1, -82)  -- -82 = Title 42px + StatusBar 40px
+    sidebar.Size = UDim2.new(0, CONFIG.SIDEBAR_WIDTH, 1, -82)
     sidebar.Position = UDim2.new(0, 8, 0, 42)
     sidebar.BackgroundColor3 = THEME.GlassBg
     sidebar.BackgroundTransparency = THEME.GlassTransparency
@@ -265,51 +266,55 @@ function GUI:SwitchTab(tabName)
     
     self.StateManager.currentMainTab = tabName
     
+    -- Animate Button States
     for name, btn in pairs(self.SidebarButtons) do
         local isSelected = (name == tabName)
-        
         local targetColor = isSelected and THEME.AccentPurple or THEME.BtnDefault
         local targetTextColor = isSelected and THEME.TextWhite or THEME.TextGray
         
-        TweenService:Create(btn, TweenInfo.new(0.2), {
-            BackgroundColor3 = targetColor
-        }):Play()
-        
-        TweenService:Create(btn, TweenInfo.new(0.2), {
-            TextColor3 = targetTextColor
-        }):Play()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.2), {TextColor3 = targetTextColor}):Play()
     end
     
+    -- Clear current content
     for _, child in pairs(self.ContentArea:GetChildren()) do
         child:Destroy()
     end
     self.ActiveTabInstance = nil
     
-    if tabName == "Players" and self.TabsModules.Players then
-        local tab = self.TabsModules.Players.new({
-            UIFactory = self.UIFactory,
-            StateManager = self.StateManager,
-            TradeManager = self.TradeManager,
-            Utils = self.Utils,
-            Config = self.Config,
-            StatusLabel = self.StatusLabel
-        })
-        tab:Init(self.ContentArea)
-        self.ActiveTabInstance = tab
-        
-    elseif tabName == "Dupe" and self.TabsModules.Dupe then
-        local tab = self.TabsModules.Dupe.new({
-            UIFactory = self.UIFactory,
-            StateManager = self.StateManager,
-            InventoryManager = self.InventoryManager,
-            TradeManager = self.TradeManager,
-            Utils = self.Utils,
-            Config = self.Config,
-            StatusLabel = self.StatusLabel,
-            ScreenGui = self.ScreenGui
-        })
-        tab:Init(self.ContentArea)
-        self.ActiveTabInstance = tab
+    -- Load new tab
+    local success, err = pcall(function()
+        if tabName == "Players" and self.TabsModules.Players then
+            local tab = self.TabsModules.Players.new({
+                UIFactory = self.UIFactory,
+                StateManager = self.StateManager,
+                TradeManager = self.TradeManager,
+                Utils = self.Utils,
+                Config = self.Config,
+                StatusLabel = self.StatusLabel
+            })
+            tab:Init(self.ContentArea)
+            self.ActiveTabInstance = tab
+            
+        elseif tabName == "Dupe" and self.TabsModules.Dupe then
+            local tab = self.TabsModules.Dupe.new({
+                UIFactory = self.UIFactory,
+                StateManager = self.StateManager,
+                InventoryManager = self.InventoryManager,
+                TradeManager = self.TradeManager,
+                Utils = self.Utils,
+                Config = self.Config,
+                StatusLabel = self.StatusLabel,
+                ScreenGui = self.ScreenGui
+            })
+            tab:Init(self.ContentArea)
+            self.ActiveTabInstance = tab
+        end
+    end)
+
+    if not success then
+        warn("Failed to load tab " .. tostring(tabName) .. ": " .. tostring(err))
+        self.StatusLabel.Text = "⚠️ Error loading tab: " .. tabName
     end
 end
 
@@ -340,11 +345,13 @@ function GUI:StartMonitoring()
     task.spawn(function()
         local missingCounter = 0
         
-        while self.ScreenGui.Parent do
+        while self.ScreenGui and self.ScreenGui.Parent do
+            -- Safe update for Players tab
             if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.UpdateButtonStates then
-                self.ActiveTabInstance:UpdateButtonStates()
+                pcall(function() self.ActiveTabInstance:UpdateButtonStates() end)
             end
 
+            -- Trade State Monitor
             if self.Utils.IsTradeActive() then
                 missingCounter = 0
             else
@@ -356,10 +363,12 @@ function GUI:StartMonitoring()
                 
                 if next(self.StateManager.itemsInTrade) ~= nil then
                     self.StateManager:ResetTrade()
-                    self.StateManager:SetStatus("🔄 Trade closed → Reset", THEME.TextGray, self.StatusLabel)
+                    if self.StatusLabel then
+                        self.StateManager:SetStatus("🔄 Trade closed → Reset", THEME.TextGray, self.StatusLabel)
+                    end
                     
-                    if self.StateManager.currentMainTab == "Dupe" and self.ActiveTabInstance then
-                        self.ActiveTabInstance:RefreshInventory()
+                    if self.StateManager.currentMainTab == "Dupe" and self.ActiveTabInstance and self.ActiveTabInstance.RefreshInventory then
+                        pcall(function() self.ActiveTabInstance:RefreshInventory() end)
                     end
                 end
             end
@@ -368,15 +377,16 @@ function GUI:StartMonitoring()
         end
     end)
     
+    -- Safe listeners for Player add/remove
     Players.PlayerAdded:Connect(function()
-        if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance then
-            self.ActiveTabInstance:RefreshList()
+        if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.RefreshList then
+            pcall(function() self.ActiveTabInstance:RefreshList() end)
         end
     end)
     
     Players.PlayerRemoving:Connect(function()
-        if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance then
-            self.ActiveTabInstance:RefreshList()
+        if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.RefreshList then
+            pcall(function() self.ActiveTabInstance:RefreshList() end)
         end
     end)
 end
