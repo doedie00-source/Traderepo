@@ -30,9 +30,9 @@ function PlayersTab:Init(parent)
     local header = self.UIFactory.CreateLabel({
         Parent = parent,
         Text = "👥 Server Players",
-        Size = UDim2.new(1, 0, 0, 40),
+        Size = UDim2.new(1, 0, 0, 32),
         TextColor = THEME.TextWhite,
-        TextSize = 18,
+        TextSize = 15,
         Font = Enum.Font.GothamBold,
         TextXAlign = Enum.TextXAlignment.Left
     })
@@ -40,10 +40,10 @@ function PlayersTab:Init(parent)
     local subHeader = self.UIFactory.CreateLabel({
         Parent = parent,
         Text = "Force trade with any player in the server",
-        Size = UDim2.new(1, 0, 0, 20),
-        Position = UDim2.new(0, 0, 0, 40),
+        Size = UDim2.new(1, 0, 0, 18),
+        Position = UDim2.new(0, 0, 0, 32),
         TextColor = THEME.TextDim,
-        TextSize = 11,
+        TextSize = 10,
         Font = Enum.Font.Gotham,
         TextXAlign = Enum.TextXAlignment.Left
     })
@@ -51,8 +51,8 @@ function PlayersTab:Init(parent)
     -- Scrolling Frame
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
-        Size = UDim2.new(1, 0, 1, -70),
-        Position = UDim2.new(0, 0, 0, 65)
+        Size = UDim2.new(1, 0, 1, -56),
+        Position = UDim2.new(0, 0, 0, 54)
     })
     
     self:RefreshList()
@@ -77,29 +77,29 @@ function PlayersTab:RefreshList()
             -- Card Frame
             local card = Instance.new("Frame", self.Container)
             card.Name = plr.Name
-            card.Size = UDim2.new(1, 0, 0, 65)
+            card.Size = UDim2.new(1, 0, 0, 58)
             card.BackgroundColor3 = THEME.CardBg
             card.BackgroundTransparency = 0.3
             card.BorderSizePixel = 0
             
-            self.UIFactory.AddCorner(card, 10)
+            self.UIFactory.AddCorner(card, 8)
             self.UIFactory.AddStroke(card, THEME.GlassStroke, 1, 0.7)
             
             -- Player Info
             local avatar = Instance.new("ImageLabel", card)
-            avatar.Size = UDim2.new(0, 45, 0, 45)
-            avatar.Position = UDim2.new(0, 10, 0.5, -22.5)
+            avatar.Size = UDim2.new(0, 40, 0, 40)
+            avatar.Position = UDim2.new(0, 9, 0.5, -20)
             avatar.BackgroundTransparency = 1
             avatar.Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. plr.UserId .. "&width=150&height=150&format=png"
-            self.UIFactory.AddCorner(avatar, 10)
+            self.UIFactory.AddCorner(avatar, 8)
             
             local nameLabel = self.UIFactory.CreateLabel({
                 Parent = card,
                 Text = plr.DisplayName,
-                Size = UDim2.new(0, 300, 0, 20),
-                Position = UDim2.new(0, 65, 0, 12),
+                Size = UDim2.new(0, 280, 0, 18),
+                Position = UDim2.new(0, 56, 0, 10),
                 TextColor = THEME.TextWhite,
-                TextSize = 14,
+                TextSize = 12,
                 Font = Enum.Font.GothamBold,
                 TextXAlign = Enum.TextXAlignment.Left
             })
@@ -107,24 +107,24 @@ function PlayersTab:RefreshList()
             local usernameLabel = self.UIFactory.CreateLabel({
                 Parent = card,
                 Text = "@" .. plr.Name,
-                Size = UDim2.new(0, 300, 0, 16),
-                Position = UDim2.new(0, 65, 0, 33),
+                Size = UDim2.new(0, 280, 0, 14),
+                Position = UDim2.new(0, 56, 0, 30),
                 TextColor = THEME.TextDim,
-                TextSize = 11,
+                TextSize = 10,
                 Font = Enum.Font.Gotham,
                 TextXAlign = Enum.TextXAlignment.Left
             })
             
             -- Trade Button
             local tradeBtn = self.UIFactory.CreateButton({
-                Size = UDim2.new(0, 100, 0, 35),
-                Position = UDim2.new(1, -110, 0.5, -17.5),
+                Size = UDim2.new(0, 85, 0, 32),
+                Position = UDim2.new(1, -92, 0.5, -16),
                 Text = isTrading and "LOCKED" or "TRADE",
                 BgColor = isTrading and THEME.BtnDisabled or THEME.AccentPurple,
                 TextColor = isTrading and THEME.TextDisabled or THEME.TextWhite,
                 Font = Enum.Font.GothamBold,
-                TextSize = 12,
-                CornerRadius = 8,
+                TextSize = 11,
+                CornerRadius = 6,
                 Parent = card
             })
             tradeBtn.AutoButtonColor = not isTrading
@@ -145,7 +145,7 @@ function PlayersTab:RefreshList()
         end
     end
     
-    self.Container.CanvasSize = UDim2.new(0, 0, 0, count * 68)
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, count * 62)
 end
 
 function PlayersTab:UpdateButtonStates()
