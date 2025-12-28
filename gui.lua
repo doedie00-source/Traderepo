@@ -63,7 +63,7 @@ function GUI:Initialize()
     self.MainFrame.BorderSizePixel = 0
     self.MainFrame.ClipsDescendants = true
     
-    self.UIFactory.AddCorner(self.MainFrame, 16)
+    self.UIFactory.AddCorner(self.MainFrame, 12)
     self.UIFactory.AddStroke(self.MainFrame, THEME.GlassStroke, 1, 0.6)
     
     -- Title Bar
@@ -75,8 +75,8 @@ function GUI:Initialize()
     -- Content Area
     self.ContentArea = Instance.new("Frame", self.MainFrame)
     self.ContentArea.Name = "ContentArea"
-    self.ContentArea.Size = UDim2.new(1, -CONFIG.SIDEBAR_WIDTH - 20, 1, -60)
-    self.ContentArea.Position = UDim2.new(0, CONFIG.SIDEBAR_WIDTH + 10, 0, 50)
+    self.ContentArea.Size = UDim2.new(1, -CONFIG.SIDEBAR_WIDTH - 18, 1, -52)
+    self.ContentArea.Position = UDim2.new(0, CONFIG.SIDEBAR_WIDTH + 10, 0, 42)
     self.ContentArea.BackgroundTransparency = 1
     self.ContentArea.BorderSizePixel = 0
 
@@ -84,10 +84,10 @@ function GUI:Initialize()
     self.StatusLabel = self.UIFactory.CreateLabel({
         Parent = self.MainFrame,
         Text = "🟢 Ready",
-        Size = UDim2.new(1, -20, 0, 25),
-        Position = UDim2.new(0, 10, 1, -30),
+        Size = UDim2.new(1, -16, 0, 22),
+        Position = UDim2.new(0, 8, 1, -26),
         TextColor = THEME.TextGray,
-        TextSize = 11,
+        TextSize = 10,
         Font = Enum.Font.GothamMedium,
         TextXAlign = Enum.TextXAlignment.Left
     })
@@ -127,12 +127,12 @@ function GUI:CreateTitleBar()
     
     local titleBar = Instance.new("Frame", self.MainFrame)
     titleBar.Name = "TitleBar"
-    titleBar.Size = UDim2.new(1, 0, 0, 45)
+    titleBar.Size = UDim2.new(1, 0, 0, 38)
     titleBar.BackgroundColor3 = THEME.GlassBg
     titleBar.BackgroundTransparency = THEME.GlassTransparency
     titleBar.BorderSizePixel = 0
     
-    self.UIFactory.AddCorner(titleBar, 16)
+    self.UIFactory.AddCorner(titleBar, 12)
     
     -- Title
     local titleLabel = self.UIFactory.CreateLabel({
@@ -140,51 +140,51 @@ function GUI:CreateTitleBar()
         Text = "  ⚡ Universal Trader",
         Size = UDim2.new(0.5, 0, 1, 0),
         TextColor = THEME.TextWhite,
-        TextSize = 16,
+        TextSize = 14,
         Font = Enum.Font.GothamBold,
         TextXAlign = Enum.TextXAlignment.Left
     })
     
     -- Version Badge
     local versionBadge = Instance.new("Frame", titleBar)
-    versionBadge.Size = UDim2.new(0, 70, 0, 22)
-    versionBadge.Position = UDim2.new(0, 200, 0.5, -11)
+    versionBadge.Size = UDim2.new(0, 60, 0, 20)
+    versionBadge.Position = UDim2.new(0, 180, 0.5, -10)
     versionBadge.BackgroundColor3 = THEME.AccentPurple
     versionBadge.BackgroundTransparency = 0.1
     versionBadge.BorderSizePixel = 0
-    self.UIFactory.AddCorner(versionBadge, 6)
+    self.UIFactory.AddCorner(versionBadge, 5)
     
     local versionText = self.UIFactory.CreateLabel({
         Parent = versionBadge,
         Text = "V" .. CONFIG.VERSION:match("(%d+%.%d+)"),
         Size = UDim2.new(1, 0, 1, 0),
         TextColor = THEME.TextWhite,
-        TextSize = 10,
+        TextSize = 9,
         Font = Enum.Font.GothamBold
     })
     
     -- Close Button
     self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 35, 0, 35),
-        Position = UDim2.new(1, -40, 0, 5),
+        Size = UDim2.new(0, 30, 0, 30),
+        Position = UDim2.new(1, -34, 0, 4),
         Text = "✕",
         BgColor = THEME.Fail,
-        TextSize = 18,
+        TextSize = 16,
         Font = Enum.Font.GothamBold,
-        CornerRadius = 8,
+        CornerRadius = 6,
         Parent = titleBar,
         OnClick = function() self.ScreenGui:Destroy() end
     })
     
     -- Minimize Button
     self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 35, 0, 35),
-        Position = UDim2.new(1, -80, 0, 5),
+        Size = UDim2.new(0, 30, 0, 30),
+        Position = UDim2.new(1, -68, 0, 4),
         Text = "─",
         BgColor = THEME.BtnDefault,
-        TextSize = 18,
+        TextSize = 16,
         Font = Enum.Font.GothamBold,
-        CornerRadius = 8,
+        CornerRadius = 6,
         Parent = titleBar,
         OnClick = function() self:ToggleWindow() end
     })
@@ -198,18 +198,18 @@ function GUI:CreateSidebar()
     
     local sidebar = Instance.new("Frame", self.MainFrame)
     sidebar.Name = "Sidebar"
-    sidebar.Size = UDim2.new(0, CONFIG.SIDEBAR_WIDTH, 1, -60)
-    sidebar.Position = UDim2.new(0, 10, 0, 50)
+    sidebar.Size = UDim2.new(0, CONFIG.SIDEBAR_WIDTH, 1, -50)
+    sidebar.Position = UDim2.new(0, 8, 0, 42)
     sidebar.BackgroundColor3 = THEME.GlassBg
     sidebar.BackgroundTransparency = THEME.GlassTransparency
     sidebar.BorderSizePixel = 0
     
-    self.UIFactory.AddCorner(sidebar, 12)
+    self.UIFactory.AddCorner(sidebar, 10)
     self.UIFactory.AddStroke(sidebar, THEME.GlassStroke, 1, 0.7)
     
     -- Logo Area
     local logoFrame = Instance.new("Frame", sidebar)
-    logoFrame.Size = UDim2.new(1, 0, 0, 60)
+    logoFrame.Size = UDim2.new(1, 0, 0, 50)
     logoFrame.BackgroundTransparency = 1
     
     local logoText = self.UIFactory.CreateLabel({
@@ -217,14 +217,14 @@ function GUI:CreateSidebar()
         Text = "⚡",
         Size = UDim2.new(1, 0, 1, 0),
         TextColor = THEME.AccentPurple,
-        TextSize = 32,
+        TextSize = 28,
         Font = Enum.Font.GothamBold
     })
     
     -- Buttons Container
     local btnContainer = Instance.new("Frame", sidebar)
-    btnContainer.Size = UDim2.new(1, -16, 1, -80)
-    btnContainer.Position = UDim2.new(0, 8, 0, 70)
+    btnContainer.Size = UDim2.new(1, -12, 1, -65)
+    btnContainer.Position = UDim2.new(0, 6, 0, 58)
     btnContainer.BackgroundTransparency = 1
     
     local layout = Instance.new("UIListLayout", btnContainer)
@@ -233,7 +233,7 @@ function GUI:CreateSidebar()
     
     -- Create Tab Buttons
     self:CreateSidebarButton(btnContainer, "Players", "👥 Players")
-    self:CreateSidebarButton(btnContainer, "Dupe", "✨ Magic Dupe")
+    self:CreateSidebarButton(btnContainer, "Dupe", "✨ Dupe")
 end
 
 function GUI:CreateSidebarButton(parent, tabName, text)
@@ -242,12 +242,12 @@ function GUI:CreateSidebarButton(parent, tabName, text)
     local btn = self.UIFactory.CreateButton({
         Parent = parent,
         Text = text,
-        Size = UDim2.new(1, 0, 0, 42),
+        Size = UDim2.new(1, 0, 0, 38),
         BgColor = THEME.BtnDefault,
         TextColor = THEME.TextGray,
-        TextSize = 12,
+        TextSize = 11,
         Font = Enum.Font.GothamBold,
-        CornerRadius = 10,
+        CornerRadius = 8,
         OnClick = function()
             self:SwitchTab(tabName)
         end
