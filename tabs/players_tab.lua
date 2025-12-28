@@ -64,11 +64,17 @@ function PlayersTab:RefreshList()
     
     -- Clear old
     for _, child in pairs(self.Container:GetChildren()) do
-        if not child:IsA("UIListLayout") then
+        if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then
             child:Destroy()
         end
     end
     self.PlayerButtons = {}
+    
+    -- Add padding to container
+    local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
+    padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
+    padding.PaddingTop = UDim.new(0, 4)
     
     local isTrading = self.Utils.IsTradeActive()
     local count = 0
@@ -78,7 +84,7 @@ function PlayersTab:RefreshList()
             -- Card Frame
             local card = Instance.new("Frame", self.Container)
             card.Name = plr.Name
-            card.Size = UDim2.new(1, 0, 0, 58)
+            card.Size = UDim2.new(1, -16, 0, 58)
             card.BackgroundColor3 = THEME.CardBg
             card.BackgroundTransparency = 0.3
             card.BorderSizePixel = 0
