@@ -2,7 +2,7 @@
 -- Universal Trade System V7.1 - Modular Entry Point
 -- วางไฟล์ลง GitHub/Pastebin แล้วใช้ URL ด้านล่าง
 
-local BASE_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/"
+local BASE_URL = "https://raw.githubusercontent.com/doedie00-source/Traderepo/refs/heads/main/"
 -- หรือ Pastebin: "https://pastebin.com/raw/"
 
 -- 📦 Module URLs
