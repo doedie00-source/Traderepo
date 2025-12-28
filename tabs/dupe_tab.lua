@@ -193,10 +193,15 @@ function DupeTab:SwitchSubTab(name)
     
     self.CurrentSubTab = name
     self.StateManager.currentDupeTab = name
-    self.StateManager.selectedPets = {}
-    self.StateManager.selectedCrates = {}
     
-    -- Update Buttons Style
+    -- self.StateManager.selectedPets = {}   -- (คอมเมนต์ออก) ถ้าอยากให้เลือกสัตว์ค้างไว้ได้ ก็ปิดบรรทัดนี้
+    -- self.StateManager.selectedCrates = {} -- ❌ [ลบบรรทัดนี้ออก] ตัวต้นเหตุ! อย่าล้างค่ากล่องเมื่อสลับแท็บ
+    
+    -- ถ้าจะล้างเฉพาะ Pets (เพราะกลัวเผลอลบ) ให้เปิดบรรทัด Pet ไว้ได้
+    -- แต่บรรทัด selectedCrates ต้องเอาออกแน่นอนครับ
+    self.StateManager.selectedPets = {} 
+    
+    -- Update Sub-tab Buttons Style
     for tabName, btn in pairs(self.SubTabButtons) do
         local isSelected = (tabName == name)
         btn.BackgroundColor3 = isSelected and THEME.AccentBlue or THEME.BtnDefault
@@ -209,25 +214,23 @@ function DupeTab:SwitchSubTab(name)
         if self.FloatingButtons.BtnEvoPet then self.FloatingButtons.BtnEvoPet.Visible = true end
         if self.FloatingButtons.BtnDupePet then self.FloatingButtons.BtnDupePet.Visible = true end
         if self.FloatingButtons.BtnAddAll1k then self.FloatingButtons.BtnAddAll1k.Visible = false end
-        
     elseif name == "Crates" then
         if self.FloatingButtons.BtnDeletePet then self.FloatingButtons.BtnDeletePet.Visible = false end
         if self.FloatingButtons.BtnEvoPet then self.FloatingButtons.BtnEvoPet.Visible = false end
         if self.FloatingButtons.BtnDupePet then self.FloatingButtons.BtnDupePet.Visible = false end
         if self.FloatingButtons.BtnAddAll1k then self.FloatingButtons.BtnAddAll1k.Visible = true end
-        
     else  -- Items
         for _, btn in pairs(self.FloatingButtons) do
             if btn then btn.Visible = false end
         end
     end
     
-    -- ✨ Update Info Label (Warning Text)
+    -- Update Info Label
     if self.InfoLabel then
         if name == "Items" then
             self.InfoLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K"
         else
-            self.InfoLabel.Text = "" -- เคลียร์ข้อความถ้าไม่ใช่หน้า Items
+            self.InfoLabel.Text = ""
         end
     end
     
