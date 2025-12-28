@@ -6,9 +6,9 @@ local CONFIG = {
     GUI_NAME = "ModernTradeGUI",
     
     -- Window Settings
-    MAIN_WINDOW_SIZE = UDim2.new(0, 900, 0, 600),
-    SIDEBAR_WIDTH = 140,
-    MINI_ICON_SIZE = UDim2.new(0, 55, 0, 55),
+    MAIN_WINDOW_SIZE = UDim2.new(0, 750, 0, 480),
+    SIDEBAR_WIDTH = 110,
+    MINI_ICON_SIZE = UDim2.new(0, 50, 0, 50),
     
     -- Timing
     STATUS_RESET_DELAY = 4,
@@ -16,9 +16,10 @@ local CONFIG = {
     TRADE_RESET_THRESHOLD = 3,
     
     -- UI Spacing
-    CORNER_RADIUS = 12,
-    LIST_PADDING = 3,
-    BUTTON_PADDING = 6,
+    CORNER_RADIUS = 10,
+    LIST_PADDING = 4,
+    BUTTON_PADDING = 5,
+    CARD_PADDING = 6,
     
     -- Keybind
     TOGGLE_KEY = Enum.KeyCode.T,
