@@ -74,13 +74,18 @@ function GUI:Initialize()
     
     -- Content Area
     self.ContentArea = Instance.new("Frame", self.MainFrame)
-    self.ContentArea.Name = "ContentArea"
-    self.ContentArea.Size = UDim2.new(1, -CONFIG.SIDEBAR_WIDTH - 18, 1, -90)  -- ✨ เพิ่ม margin ล่าง: -52 → -90 (เผื่อ StatusBar 36px + spacing)
-    self.ContentArea.Position = UDim2.new(0, CONFIG.SIDEBAR_WIDTH + 10, 0, 42)
-    self.ContentArea.BackgroundTransparency = 1
-    self.ContentArea.BorderSizePixel = 0
+self.ContentArea.Name = "ContentArea"
+self.ContentArea.Size = UDim2.new(1, -CONFIG.SIDEBAR_WIDTH - 18, 1, -78)  -- ✨ หลบแค่ Header + StatusBar
+self.ContentArea.Position = UDim2.new(0, CONFIG.SIDEBAR_WIDTH + 10, 0, 42)
+self.ContentArea.BackgroundTransparency = 1
+self.ContentArea.BorderSizePixel = 0
 
-    -- Status Bar
+
+-- ==============================================
+-- แก้ไข: StatusLabel ปกติ (gui.lua)
+-- ==============================================
+
+    -- StatusLabel
     self.StatusLabel = self.UIFactory.CreateLabel({
         Parent = self.MainFrame,
         Text = "🟢 Ready",
@@ -95,7 +100,7 @@ function GUI:Initialize()
     self.StatusLabel.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
     self.StatusLabel.BackgroundTransparency = 0.5
     self.StatusLabel.BorderSizePixel = 0
-    self.StatusLabel.ZIndex = 100  -- ✨ กำหนด ZIndex (ต่ำกว่า ActionBar)
+    self.StatusLabel.ZIndex = 100  -- ✨ ปุ่มจะอยู่ ZIndex 200 (เหนือ StatusBar)
 
     -- เส้นบนแบ่ง zone
     local topLine = Instance.new("Frame", self.StatusLabel)
@@ -114,6 +119,7 @@ function GUI:Initialize()
     self.StatusLabel.TextWrapped = true
     self.StatusLabel.TextYAlignment = Enum.TextYAlignment.Center
     self.StatusLabel.AutomaticSize = Enum.AutomaticSize.Y
+
 
     -- Start
     self:SwitchTab("Players")
