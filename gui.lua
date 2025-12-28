@@ -1,5 +1,5 @@
 -- gui.lua
--- Main GUI Controller - FIXED VERSION (No Overlap & Crash Safety)
+-- Main GUI Controller - FIXED RIGHT INFO LABEL
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -34,7 +34,6 @@ function GUI:Initialize()
     local CONFIG = self.Config.CONFIG
     local THEME = self.Config.THEME
 
-    -- Clean up old instances
     if CoreGui:FindFirstChild(CONFIG.GUI_NAME) then
         pcall(function() CoreGui[CONFIG.GUI_NAME]:Destroy() end)
     end
@@ -64,8 +63,6 @@ function GUI:Initialize()
     self:CreateTitleBar()
     self:CreateSidebar()
     
-    -- ✨ Content Area - Calculated to avoid overlapping StatusBar
-    -- Height: 100% - (Title 42px + StatusBar 40px) = -82px
     self.ContentArea = Instance.new("Frame", self.MainFrame)
     self.ContentArea.Name = "ContentArea"
     self.ContentArea.Size = UDim2.new(1, -CONFIG.SIDEBAR_WIDTH - 18, 1, -82) 
@@ -73,37 +70,47 @@ function GUI:Initialize()
     self.ContentArea.BackgroundTransparency = 1
     self.ContentArea.BorderSizePixel = 0
 
-    -- ✨ Status Bar - Pinned to bottom
-    self.StatusLabel = self.UIFactory.CreateLabel({
-        Parent = self.MainFrame,
-        Text = "🟢 Ready",
-        Size = UDim2.new(1, -16, 0, 30),
-        Position = UDim2.new(0, 8, 1, -36),
-        TextColor = THEME.TextGray,
-        TextSize = 11,
-        Font = Enum.Font.GothamMedium,
-        TextXAlign = Enum.TextXAlignment.Left
-    })
-
-    self.StatusLabel.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
-    self.StatusLabel.BackgroundTransparency = 0.5
-    self.StatusLabel.BorderSizePixel = 0
-    self.StatusLabel.ZIndex = 100
-
-    local topLine = Instance.new("Frame", self.StatusLabel)
+    -- ✨ Status Bar Container (พื้นหลัง)
+    local StatusBarBg = Instance.new("Frame", self.MainFrame)
+    StatusBarBg.Name = "StatusBar"
+    StatusBarBg.Size = UDim2.new(1, -16, 0, 30)
+    StatusBarBg.Position = UDim2.new(0, 8, 1, -36)
+    StatusBarBg.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
+    StatusBarBg.BackgroundTransparency = 0.5
+    StatusBarBg.BorderSizePixel = 0
+    StatusBarBg.ZIndex = 100
+    
+    local topLine = Instance.new("Frame", StatusBarBg)
     topLine.Size = UDim2.new(1, 0, 0, 1)
     topLine.BackgroundColor3 = THEME.GlassStroke
     topLine.BackgroundTransparency = 0.7
     topLine.BorderSizePixel = 0
     topLine.ZIndex = 101
 
-    local padding = Instance.new("UIPadding", self.StatusLabel)
-    padding.PaddingLeft = UDim.new(0, 12)
-    padding.PaddingRight = UDim.new(0, 12)
-
-    self.StatusLabel.TextWrapped = true
-    self.StatusLabel.TextYAlignment = Enum.TextYAlignment.Center
-    self.StatusLabel.AutomaticSize = Enum.AutomaticSize.Y
+    -- ✨ Status Label (ซ้าย - สำหรับสถานะระบบ)
+    self.StatusLabel = self.UIFactory.CreateLabel({
+        Parent = StatusBarBg,
+        Text = "🟢 Ready",
+        Size = UDim2.new(0.6, 0, 1, 0), -- ใช้พื้นที่ 60% ทางซ้าย
+        Position = UDim2.new(0, 12, 0, 0),
+        TextColor = THEME.TextGray,
+        TextSize = 11,
+        Font = Enum.Font.GothamMedium,
+        TextXAlign = Enum.TextXAlignment.Left
+    })
+    
+    -- ✨ Info Label (ขวา - สำหรับ Warning Limits)
+    self.InfoLabel = self.UIFactory.CreateLabel({
+        Parent = StatusBarBg,
+        Text = "",
+        Size = UDim2.new(0.4, -12, 1, 0), -- ใช้พื้นที่ 40% ทางขวา
+        Position = UDim2.new(1, -12, 0, 0),
+        AnchorPoint = Vector2.new(1, 0),
+        TextColor = THEME.Warning,
+        TextSize = 10,
+        Font = Enum.Font.GothamBold,
+        TextXAlign = Enum.TextXAlignment.Right -- ชิดขวา
+    })
 
     self:SwitchTab("Players")
     self:StartMonitoring()
@@ -266,7 +273,6 @@ function GUI:SwitchTab(tabName)
     
     self.StateManager.currentMainTab = tabName
     
-    -- Animate Button States
     for name, btn in pairs(self.SidebarButtons) do
         local isSelected = (name == tabName)
         local targetColor = isSelected and THEME.AccentPurple or THEME.BtnDefault
@@ -276,13 +282,14 @@ function GUI:SwitchTab(tabName)
         TweenService:Create(btn, TweenInfo.new(0.2), {TextColor3 = targetTextColor}):Play()
     end
     
-    -- Clear current content
     for _, child in pairs(self.ContentArea:GetChildren()) do
         child:Destroy()
     end
     self.ActiveTabInstance = nil
+
+    -- ✨ เคลียร์ InfoLabel เมื่อเปลี่ยน Tab หลัก
+    if self.InfoLabel then self.InfoLabel.Text = "" end
     
-    -- Load new tab
     local success, err = pcall(function()
         if tabName == "Players" and self.TabsModules.Players then
             local tab = self.TabsModules.Players.new({
@@ -291,7 +298,8 @@ function GUI:SwitchTab(tabName)
                 TradeManager = self.TradeManager,
                 Utils = self.Utils,
                 Config = self.Config,
-                StatusLabel = self.StatusLabel
+                StatusLabel = self.StatusLabel,
+                InfoLabel = self.InfoLabel -- ✨ ส่ง InfoLabel ไปให้ใช้
             })
             tab:Init(self.ContentArea)
             self.ActiveTabInstance = tab
@@ -305,7 +313,8 @@ function GUI:SwitchTab(tabName)
                 Utils = self.Utils,
                 Config = self.Config,
                 StatusLabel = self.StatusLabel,
-                ScreenGui = self.ScreenGui
+                ScreenGui = self.ScreenGui,
+                InfoLabel = self.InfoLabel -- ✨ ส่ง InfoLabel ไปให้ใช้
             })
             tab:Init(self.ContentArea)
             self.ActiveTabInstance = tab
@@ -346,12 +355,10 @@ function GUI:StartMonitoring()
         local missingCounter = 0
         
         while self.ScreenGui and self.ScreenGui.Parent do
-            -- Safe update for Players tab
             if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.UpdateButtonStates then
                 pcall(function() self.ActiveTabInstance:UpdateButtonStates() end)
             end
 
-            -- Trade State Monitor
             if self.Utils.IsTradeActive() then
                 missingCounter = 0
             else
@@ -377,7 +384,6 @@ function GUI:StartMonitoring()
         end
     end)
     
-    -- Safe listeners for Player add/remove
     Players.PlayerAdded:Connect(function()
         if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.RefreshList then
             pcall(function() self.ActiveTabInstance:RefreshList() end)
