@@ -30,7 +30,8 @@ function PlayersTab:Init(parent)
     local header = self.UIFactory.CreateLabel({
         Parent = parent,
         Text = "👥 Server Players",
-        Size = UDim2.new(1, 0, 0, 32),
+        Size = UDim2.new(1, -8, 0, 28),
+        Position = UDim2.new(0, 8, 0, 0),
         TextColor = THEME.TextWhite,
         TextSize = 15,
         Font = Enum.Font.GothamBold,
@@ -40,8 +41,8 @@ function PlayersTab:Init(parent)
     local subHeader = self.UIFactory.CreateLabel({
         Parent = parent,
         Text = "Force trade with any player in the server",
-        Size = UDim2.new(1, 0, 0, 18),
-        Position = UDim2.new(0, 0, 0, 32),
+        Size = UDim2.new(1, -8, 0, 16),
+        Position = UDim2.new(0, 8, 0, 28),
         TextColor = THEME.TextDim,
         TextSize = 10,
         Font = Enum.Font.Gotham,
@@ -51,8 +52,8 @@ function PlayersTab:Init(parent)
     -- Scrolling Frame
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
-        Size = UDim2.new(1, 0, 1, -56),
-        Position = UDim2.new(0, 0, 0, 54)
+        Size = UDim2.new(1, 0, 1, -50),
+        Position = UDim2.new(0, 0, 0, 48)
     })
     
     self:RefreshList()
