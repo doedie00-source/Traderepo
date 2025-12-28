@@ -602,23 +602,41 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
         self.FloatingButtons.BtnAddAll1k.Active = false
         self.FloatingButtons.BtnAddAll1k.Text = "ADDING..."
     end
-    self.StateManager:SetStatus("🚀 Adding all crates (1,000 each)...", THEME.AccentBlue, self.StatusLabel)
+    self.StateManager:SetStatus("🚀 Adding missing crates (1k)...", THEME.AccentBlue, self.StatusLabel)
     
     task.spawn(function()
         local addedCount = 0
         for _, crate in ipairs(cratesList) do
             local amountInInv = inventoryCrates[crate.DisplayName] or inventoryCrates[crate.InternalID]
-            if amountInInv == nil then
+            
+            -- เช็คว่ากล่องนี้ถูกเลือกไปหรือยัง?
+            local isAlreadySelected = self.StateManager.selectedCrates[crate.DisplayName] 
+                                      or self.StateManager:IsInTrade(crate.DisplayName)
+            
+            -- เงื่อนไข: (1.ต้องไม่มีของในตัว) และ (2.ต้องยังไม่เคยเลือก)
+            if amountInInv == nil and not isAlreadySelected then
+                
+                -- กำหนดค่า State เป็น 1000 (แก้ปัญหาเลขขึ้น x1)
+                self.StateManager.selectedCrates[crate.DisplayName] = 1000
+
+                -- ส่งคำสั่งเพิ่มเข้าเทรด
                 self.TradeManager.SendTradeSignal("Add", {
                     Name = crate.DisplayName,
                     Service = "CratesService",
                     Category = "Crates"
                 }, 1000, self.StatusLabel, self.StateManager, self.Utils)
+                
                 addedCount = addedCount + 1
                 task.wait(0.05)
             end
+            -- ถ้าเลือกไปแล้ว (isAlreadySelected เป็น true) โค้ดจะข้ามไปเลย ไม่ทำอะไร
         end
-        self.StateManager:SetStatus("✅ Added " .. addedCount .. " types!", THEME.Success, self.StatusLabel)
+        
+        if addedCount > 0 then
+            self.StateManager:SetStatus("✅ Added " .. addedCount .. " new types!", THEME.Success, self.StatusLabel)
+        else
+            self.StateManager:SetStatus("✨ Nothing new to add", THEME.TextGray, self.StatusLabel)
+        end
         
         if self.FloatingButtons.BtnAddAll1k then
             self.FloatingButtons.BtnAddAll1k.Active = true
