@@ -268,11 +268,14 @@ function GUI:CreateSidebarButton(parent, tabName, text)
     self.SidebarButtons[tabName] = btn
 end
 
+-- ในไฟล์ gui.lua
+
 function GUI:SwitchTab(tabName)
     local THEME = self.Config.THEME
     
     self.StateManager.currentMainTab = tabName
     
+    -- Animation ปุ่มเมนูซ้าย (คงเดิม)
     for name, btn in pairs(self.SidebarButtons) do
         local isSelected = (name == tabName)
         local targetColor = isSelected and THEME.AccentPurple or THEME.BtnDefault
@@ -282,14 +285,18 @@ function GUI:SwitchTab(tabName)
         TweenService:Create(btn, TweenInfo.new(0.2), {TextColor3 = targetTextColor}):Play()
     end
     
+    -- Clear content เก่า
     for _, child in pairs(self.ContentArea:GetChildren()) do
         child:Destroy()
     end
     self.ActiveTabInstance = nil
 
-    -- ✨ เคลียร์ InfoLabel เมื่อเปลี่ยน Tab หลัก
-    if self.InfoLabel then self.InfoLabel.Text = "" end
+    -- ✨ [แก้ไขตรงนี้] สั่งล้าง InfoLabel (ทางขวา) ทิ้งเสมอเมื่อเปลี่ยนหน้าเมนูหลัก
+    if self.InfoLabel then 
+        self.InfoLabel.Text = "" 
+    end
     
+    -- Load tab ใหม่
     local success, err = pcall(function()
         if tabName == "Players" and self.TabsModules.Players then
             local tab = self.TabsModules.Players.new({
@@ -299,7 +306,7 @@ function GUI:SwitchTab(tabName)
                 Utils = self.Utils,
                 Config = self.Config,
                 StatusLabel = self.StatusLabel,
-                InfoLabel = self.InfoLabel -- ✨ ส่ง InfoLabel ไปให้ใช้
+                InfoLabel = self.InfoLabel -- อย่าลืมบรรทัดนี้ ต้องส่ง InfoLabel ไปด้วย
             })
             tab:Init(self.ContentArea)
             self.ActiveTabInstance = tab
@@ -314,7 +321,7 @@ function GUI:SwitchTab(tabName)
                 Config = self.Config,
                 StatusLabel = self.StatusLabel,
                 ScreenGui = self.ScreenGui,
-                InfoLabel = self.InfoLabel -- ✨ ส่ง InfoLabel ไปให้ใช้
+                InfoLabel = self.InfoLabel -- อย่าลืมบรรทัดนี้ ต้องส่ง InfoLabel ไปด้วย
             })
             tab:Init(self.ContentArea)
             self.ActiveTabInstance = tab
