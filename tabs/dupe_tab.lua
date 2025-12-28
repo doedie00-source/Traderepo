@@ -1,6 +1,3 @@
--- tabs/dupe_tab.lua
--- Dupe Tab Module (Items, Crates, Pets)
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -38,7 +35,7 @@ function DupeTab.new(deps)
     self.Container = nil
     self.SubTabButtons = {}
     self.CurrentSubTab = "Items"
-    self.ActionBar = nil
+    self.FloatingButtons = {}  -- ✅ เก็บ floating buttons
     self.TooltipRef = nil
     
     return self
@@ -89,21 +86,85 @@ function DupeTab:Init(parent)
     self:CreateSubTab(tabsContainer, "Crates", "🎁 Crates")
     self:CreateSubTab(tabsContainer, "Pets", "🐾 Pets")
     
-    -- Content Container
+    -- Content Container (ขนาดเดียวกันทุกแท็บ)
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
-        Size = UDim2.new(1, 0, 1, -116),
+        Size = UDim2.new(1, 0, 1, -76),
         Position = UDim2.new(0, 0, 0, 74)
     })
     
-    -- Action Bar
-    self:CreateActionBar(parent)
-    
-    -- Warning Box (for Items tab) - IMPROVED VERSION
-    self:CreateWarningBox(parent)
+    -- ✅ สร้าง Floating Buttons (ซ่อนไว้ก่อน)
+    self:CreateFloatingButtons(parent)
     
     -- Load First Tab
     self:SwitchSubTab("Items")
+end
+
+function DupeTab:CreateFloatingButtons(parent)
+    local THEME = self.Config.THEME
+    
+    -- ตั้งค่าขนาดและระยะห่าง
+    local spacing = 6
+    local btnWidth = 90
+    local btnHeight = 30
+    local startX = -8  -- เริ่มจากขวาสุด
+    
+    -- 🐾 Pet Actions - เรียงชิดกันจากขวาไปซ้าย
+    self.FloatingButtons.BtnDupePet = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, btnWidth, 0, btnHeight),
+        Position = UDim2.new(1, startX - btnWidth, 1, -36),
+        Text = "✨ DUPE",
+        BgColor = THEME.AccentGreen,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        Parent = parent,
+        OnClick = function() self:OnDupePets() end
+    })
+    self.FloatingButtons.BtnDupePet.ZIndex = 101
+    self.FloatingButtons.BtnDupePet.Visible = false
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnDupePet, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
+    
+    self.FloatingButtons.BtnEvoPet = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, btnWidth + 15, 0, btnHeight),
+        Position = UDim2.new(1, startX - btnWidth*2 - spacing - 15, 1, -36),
+        Text = "🧬 EVOLVE",
+        BgColor = THEME.AccentPurple,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        Parent = parent,
+        OnClick = function() self:OnEvolvePets() end
+    })
+    self.FloatingButtons.BtnEvoPet.ZIndex = 101
+    self.FloatingButtons.BtnEvoPet.Visible = false
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnEvoPet, Color3.fromRGB(120, 130, 255), 1.5, 0.3)
+    
+    self.FloatingButtons.BtnDeletePet = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, btnWidth, 0, btnHeight),
+        Position = UDim2.new(1, startX - btnWidth*3 - spacing*2 - 15, 1, -36),
+        Text = "🗑️ DELETE",
+        BgColor = THEME.Fail,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        Parent = parent,
+        OnClick = function() self:OnDeletePets() end
+    })
+    self.FloatingButtons.BtnDeletePet.ZIndex = 101
+    self.FloatingButtons.BtnDeletePet.Visible = false
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnDeletePet, Color3.fromRGB(255, 100, 100), 1.5, 0.3)
+    
+    -- 🎁 Crate Action
+    self.FloatingButtons.BtnAddAll1k = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, 130, 0, btnHeight),
+        Position = UDim2.new(1, -138, 1, -36),
+        Text = "➕ ADD 1K ALL",
+        BgColor = THEME.AccentGreen,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        Parent = parent
+    })
+    self.FloatingButtons.BtnAddAll1k.ZIndex = 101
+    self.FloatingButtons.BtnAddAll1k.Visible = false
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnAddAll1k, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
 end
 
 function DupeTab:CreateSubTab(parent, name, text)
@@ -134,126 +195,48 @@ function DupeTab:SwitchSubTab(name)
     self.StateManager.selectedPets = {}
     self.StateManager.selectedCrates = {}
     
-    -- Update Buttons
+    -- Update Sub-tab Buttons
     for tabName, btn in pairs(self.SubTabButtons) do
         local isSelected = (tabName == name)
         btn.BackgroundColor3 = isSelected and THEME.AccentBlue or THEME.BtnDefault
         btn.TextColor3 = isSelected and THEME.TextWhite or THEME.TextGray
     end
     
+    -- ✅ แสดง/ซ่อน Floating Buttons และ Warning ตามแท็บ
+    if name == "Pets" then
+        -- แสดงปุ่มสำหรับ Pets
+        self.FloatingButtons.BtnDeletePet.Visible = true
+        self.FloatingButtons.BtnEvoPet.Visible = true
+        self.FloatingButtons.BtnDupePet.Visible = true
+        self.FloatingButtons.BtnAddAll1k.Visible = false
+        
+        -- รีเซ็ต StatusBar
+        self.StatusLabel.Text = "🟢 Ready"
+        self.StatusLabel.TextColor3 = THEME.TextGray
+        
+    elseif name == "Crates" then
+        -- แสดงปุ่มสำหรับ Crates
+        self.FloatingButtons.BtnDeletePet.Visible = false
+        self.FloatingButtons.BtnEvoPet.Visible = false
+        self.FloatingButtons.BtnDupePet.Visible = false
+        self.FloatingButtons.BtnAddAll1k.Visible = true
+        
+        -- รีเซ็ต StatusBar
+        self.StatusLabel.Text = "🟢 Ready"
+        self.StatusLabel.TextColor3 = THEME.TextGray
+        
+    else  -- Items
+        -- ซ่อนปุ่มทั้งหมด
+        for _, btn in pairs(self.FloatingButtons) do
+            btn.Visible = false
+        end
+        
+        -- ✅ แสดง Warning ใน StatusBar (แทนที่ WarningBox)
+        self.StatusLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K • Exceeding may risk ban!"
+        self.StatusLabel.TextColor3 = THEME.Warning
+    end
+    
     self:RefreshInventory()
-end
-
-function DupeTab:CreateActionBar(parent)
-    local THEME = self.Config.THEME
-    
-    -- ✨ ActionBar แบบโปร่งใส ไม่มีพื้นหลัง
-    self.ActionBar = Instance.new("Frame", parent)
-    self.ActionBar.Name = "ActionBar"
-    self.ActionBar.Size = UDim2.new(1, 0, 0, 42)
-    self.ActionBar.Position = UDim2.new(0, 0, 1, -46)
-    self.ActionBar.BackgroundTransparency = 1
-    self.ActionBar.BorderSizePixel = 0
-    self.ActionBar.Visible = false
-    self.ActionBar.ZIndex = 200  -- ✨ เพิ่ม ZIndex สูงกว่า StatusBar (100)
-    
-    -- 🔹 Pet Actions - เรียงชิดกันทางขวา
-    local spacing = 6
-    local btnWidth = 95
-    local btnHeight = 36
-    
-    self.BtnDupePet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, btnWidth, 0, btnHeight),
-        Position = UDim2.new(1, -btnWidth - 8, 0.5, -btnHeight/2),
-        Text = "✨ DUPE",
-        BgColor = THEME.AccentGreen,
-        TextSize = 12,
-        Font = Enum.Font.GothamBold,
-        Parent = self.ActionBar,
-        OnClick = function() self:OnDupePets() end
-    })
-    self.BtnDupePet.ZIndex = 201  -- ✨ ปุ่มต้องสูงกว่า ActionBar
-    self.UIFactory.AddStroke(self.BtnDupePet, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
-    
-    self.BtnEvoPet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, btnWidth + 20, 0, btnHeight),
-        Position = UDim2.new(1, -(btnWidth*2 + spacing + 28) - 8, 0.5, -btnHeight/2),
-        Text = "🧬 EVOLVE",
-        BgColor = THEME.AccentPurple,
-        TextSize = 12,
-        Font = Enum.Font.GothamBold,
-        Parent = self.ActionBar,
-        OnClick = function() self:OnEvolvePets() end
-    })
-    self.BtnEvoPet.ZIndex = 201
-    self.UIFactory.AddStroke(self.BtnEvoPet, Color3.fromRGB(120, 130, 255), 1.5, 0.3)
-    
-    self.BtnDeletePet = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, btnWidth, 0, btnHeight),
-        Position = UDim2.new(1, -(btnWidth*3 + spacing*2 + 28) - 8, 0.5, -btnHeight/2),
-        Text = "🗑️ DELETE",
-        BgColor = THEME.Fail,
-        TextSize = 12,
-        Font = Enum.Font.GothamBold,
-        Parent = self.ActionBar,
-        OnClick = function() self:OnDeletePets() end
-    })
-    self.BtnDeletePet.ZIndex = 201
-    self.UIFactory.AddStroke(self.BtnDeletePet, Color3.fromRGB(255, 100, 100), 1.5, 0.3)
-    
-    -- 🔹 Crate Actions
-    self.BtnAddAll1k = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 140, 0, btnHeight),
-        Position = UDim2.new(1, -148, 0.5, -btnHeight/2),
-        Text = "➕ ADD 1K ALL",
-        BgColor = THEME.AccentGreen,
-        TextSize = 12,
-        Font = Enum.Font.GothamBold,
-        Parent = self.ActionBar
-    })
-    self.BtnAddAll1k.ZIndex = 201
-    self.UIFactory.AddStroke(self.BtnAddAll1k, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
-end
-
--- ปรับปรุง Warning Box ให้อ่านง่ายขึ้น แสดงเป็นแถวเดียว
-function DupeTab:CreateWarningBox(parent)
-    local THEME = self.Config.THEME
-    
-    self.WarningBox = Instance.new("Frame", parent)
-    self.WarningBox.Name = "WarningBox"
-    self.WarningBox.Size = UDim2.new(1, -16, 0, 38)  -- ลดความสูง + เพิ่ม margin
-    self.WarningBox.Position = UDim2.new(0, 8, 1, -46)  -- ห่างจากขอบล่างมากขึ้น
-    self.WarningBox.BackgroundColor3 = Color3.fromRGB(40, 32, 25)  -- เข้มขึ้นเล็กน้อย
-    self.WarningBox.BackgroundTransparency = 0.15  -- ทึบขึ้น
-    self.WarningBox.BorderSizePixel = 0
-    self.WarningBox.Visible = false
-    self.WarningBox.ZIndex = 99
-    
-    self.UIFactory.AddCorner(self.WarningBox, 8)
-    self.UIFactory.AddStroke(self.WarningBox, THEME.Warning, 2, 0.3)  -- เส้นชัดขึ้น
-    
-    -- ไอคอนเตือน
-    local icon = self.UIFactory.CreateLabel({
-        Parent = self.WarningBox,
-        Text = "⚠️",
-        Size = UDim2.new(0, 32, 1, 0),
-        Position = UDim2.new(0, 4, 0, 0),
-        TextSize = 18,
-        Font = Enum.Font.GothamBold
-    })
-    
-    -- ข้อความเตือนแบบแถวเดียว กระชับ อ่านง่าย
-    local text = self.UIFactory.CreateLabel({
-        Parent = self.WarningBox,
-        Text = "⚠️ LIMITS: SCROLLS ~150 | TICKETS ~10K | POTIONS ~2K  •  Exceeding may risk ban!",
-        Size = UDim2.new(1, -40, 1, 0),
-        Position = UDim2.new(0, 36, 0, 0),
-        TextColor = THEME.Warning,
-        TextSize = 10,
-        Font = Enum.Font.GothamBold,
-        TextXAlign = Enum.TextXAlignment.Left
-    })
-    text.TextWrapped = false  -- ไม่ wrap เพื่อให้เป็นบรรทัดเดียว
 end
 
 function DupeTab:RefreshInventory()
@@ -262,38 +245,6 @@ function DupeTab:RefreshInventory()
         if not child:IsA("UIListLayout") and not child:IsA("UIGridLayout") and not child:IsA("UIPadding") then
             child:Destroy()
         end
-    end
-    
-    -- ✨ ปรับ Container Size ให้ไม่ทับ StatusBar + ActionBar
-    if self.CurrentSubTab == "Items" then
-        self.ActionBar.Visible = false
-        self.WarningBox.Visible = true
-        -- Container: หน้าต่าง 480px - Header 74px - WarningBox 46px - StatusBar 36px - spacing 8px = 316px
-        self.Container.Size = UDim2.new(1, -16, 1, -164)  -- เพิ่ม margin ล่าง
-        self.Container.Position = UDim2.new(0, 8, 0, 74)
-        
-    elseif self.CurrentSubTab == "Crates" then
-        self.ActionBar.Visible = true
-        self.WarningBox.Visible = false
-        -- Container: หน้าต่าง - Header 74px - ActionBar 46px - StatusBar 36px - spacing = ~324px
-        self.Container.Size = UDim2.new(1, -16, 1, -164)
-        self.Container.Position = UDim2.new(0, 8, 0, 74)
-        
-        self.BtnDeletePet.Visible = false
-        self.BtnEvoPet.Visible = false
-        self.BtnDupePet.Visible = false
-        self.BtnAddAll1k.Visible = true
-        
-    elseif self.CurrentSubTab == "Pets" then
-        self.ActionBar.Visible = true
-        self.WarningBox.Visible = false
-        self.Container.Size = UDim2.new(1, -16, 1, -164)
-        self.Container.Position = UDim2.new(0, 8, 0, 74)
-        
-        self.BtnDeletePet.Visible = true
-        self.BtnEvoPet.Visible = true
-        self.BtnDupePet.Visible = true
-        self.BtnAddAll1k.Visible = false
     end
     
     -- Render Content
