@@ -50,13 +50,14 @@ function DupeTab:Init(parent)
     -- Header
     local header = Instance.new("Frame", parent)
     header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 78)
+    header.Size = UDim2.new(1, 0, 0, 72)
     header.BackgroundTransparency = 1
     
     local title = self.UIFactory.CreateLabel({
         Parent = header,
         Text = "✨ Magic Dupe System",
-        Size = UDim2.new(1, 0, 0, 26),
+        Size = UDim2.new(1, -8, 0, 24),
+        Position = UDim2.new(0, 8, 0, 0),
         TextColor = THEME.TextWhite,
         TextSize = 15,
         Font = Enum.Font.GothamBold,
@@ -66,8 +67,8 @@ function DupeTab:Init(parent)
     local subtitle = self.UIFactory.CreateLabel({
         Parent = header,
         Text = "Dupe items, crates, and pets using trade exploit",
-        Size = UDim2.new(1, 0, 0, 18),
-        Position = UDim2.new(0, 0, 0, 26),
+        Size = UDim2.new(1, -8, 0, 16),
+        Position = UDim2.new(0, 8, 0, 24),
         TextColor = THEME.TextDim,
         TextSize = 10,
         Font = Enum.Font.Gotham,
@@ -76,8 +77,8 @@ function DupeTab:Init(parent)
     
     -- Sub-tabs
     local tabsContainer = Instance.new("Frame", header)
-    tabsContainer.Size = UDim2.new(1, 0, 0, 32)
-    tabsContainer.Position = UDim2.new(0, 0, 0, 46)
+    tabsContainer.Size = UDim2.new(1, -8, 0, 32)
+    tabsContainer.Position = UDim2.new(0, 8, 0, 42)
     tabsContainer.BackgroundTransparency = 1
     
     local tabsLayout = Instance.new("UIListLayout", tabsContainer)
@@ -91,8 +92,8 @@ function DupeTab:Init(parent)
     -- Content Container
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
-        Size = UDim2.new(1, 0, 1, -126),
-        Position = UDim2.new(0, 0, 0, 82)
+        Size = UDim2.new(1, 0, 1, -116),
+        Position = UDim2.new(0, 0, 0, 74)
     })
     
     -- Action Bar
@@ -207,7 +208,7 @@ function DupeTab:CreateWarningBox(parent)
     self.WarningBox = Instance.new("Frame", parent)
     self.WarningBox.Name = "WarningBox"
     self.WarningBox.Size = UDim2.new(1, 0, 0, 52)
-    self.WarningBox.Position = UDim2.new(0, 0, 1, -98)
+    self.WarningBox.Position = UDim2.new(0, 0, 1, -94)
     self.WarningBox.BackgroundColor3 = Color3.fromRGB(35, 28, 22)
     self.WarningBox.BackgroundTransparency = 0.2
     self.WarningBox.BorderSizePixel = 0
@@ -249,11 +250,11 @@ function DupeTab:RefreshInventory()
     self.ActionBar.Visible = (self.CurrentSubTab == "Pets" or self.CurrentSubTab == "Crates")
     self.WarningBox.Visible = (self.CurrentSubTab == "Items")
     
-    -- Update Container Size
+    -- Update Container Size (ปรับให้ใช้พื้นที่เต็ม)
     if self.CurrentSubTab == "Items" then
-        self.Container.Size = UDim2.new(1, 0, 1, -186)
+        self.Container.Size = UDim2.new(1, 0, 1, -168) -- 72 header + 52 warning + 42 action + 2 spacing
     elseif self.CurrentSubTab == "Pets" or self.CurrentSubTab == "Crates" then
-        self.Container.Size = UDim2.new(1, 0, 1, -168)
+        self.Container.Size = UDim2.new(1, 0, 1, -118) -- 72 header + 42 action + 4 spacing
     end
     
     -- Render Content
@@ -288,7 +289,8 @@ function DupeTab:RenderItemDupeGrid()
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
     layout.CellPadding = UDim2.new(0, 6, 0, 6)
     layout.CellSize = UDim2.new(0, 92, 0, 115)
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
     
     local recipes = DUPE_RECIPES.Items or {}
     local playerData = self.InventoryManager.GetPlayerData()
@@ -439,11 +441,13 @@ function DupeTab:RenderCrateGrid()
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
     padding.PaddingTop = UDim.new(0, 8)
     padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
     layout.CellPadding = UDim2.new(0, 6, 0, 6)
     layout.CellSize = UDim2.new(0, 88, 0, 102)
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
     
     local replica = ReplicaListener:GetReplica()
     local playerData = replica and replica.Data
@@ -667,11 +671,13 @@ function DupeTab:RenderPetDupeGrid()
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
     padding.PaddingTop = UDim.new(0, 8)
     padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
     layout.CellSize = UDim2.new(0, 92, 0, 110)
     layout.CellPadding = UDim2.new(0, 6, 0, 6)
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
     
     local replica = ReplicaListener:GetReplica()
     local MyPetsData = replica and replica.Data.PetsService and replica.Data.PetsService.Pets
