@@ -2,6 +2,7 @@
 -- State Manager
 
 local StateManager = {
+    Config = nil, -- ตั้งค่าจาก main
     currentMainTab = "Players",
     currentDupeTab = "Items",
     itemsInTrade = {},
@@ -13,7 +14,7 @@ local StateManager = {
 }
 
 function StateManager:SetStatus(text, color, statusLabel)
-    local Config = require(script.Parent.config)
+    local Config = self.Config
     local THEME = Config.THEME
     local CONFIG = Config.CONFIG
     
