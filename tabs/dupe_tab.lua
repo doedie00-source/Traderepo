@@ -1,5 +1,5 @@
 -- tabs/dupe_tab.lua
--- Dupe Tab Module - FIXED UI VERSION
+-- Dupe Tab Module - FIXED RIGHT ALIGN INFO
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,12 +32,13 @@ function DupeTab.new(deps)
     self.Utils = deps.Utils
     self.Config = deps.Config
     self.StatusLabel = deps.StatusLabel
+    self.InfoLabel = deps.InfoLabel -- ✨ รับ InfoLabel มาใช้
     self.ScreenGui = deps.ScreenGui
     
     self.Container = nil
     self.SubTabButtons = {}
     self.CurrentSubTab = "Items"
-    self.FloatingButtons = {}  -- เก็บ floating buttons
+    self.FloatingButtons = {} 
     self.TooltipRef = nil
     
     return self
@@ -95,7 +96,6 @@ function DupeTab:Init(parent)
         Position = UDim2.new(0, 0, 0, 74)
     })
     
-    -- ✨ สร้าง Floating Buttons (ซ่อนไว้ก่อน)
     self:CreateFloatingButtons(parent)
     
     -- Load First Tab
@@ -105,11 +105,10 @@ end
 function DupeTab:CreateFloatingButtons(parent)
     local THEME = self.Config.THEME
     
-    -- 🔹 Pet Actions - เรียงชิดกันจากขวา
     local spacing = 6
     local btnWidth = 90
     local btnHeight = 30
-    local startX = -8  -- เริ่มจากขวาสุด
+    local startX = -8 
     
     self.FloatingButtons.BtnDupePet = self.UIFactory.CreateButton({
         Size = UDim2.new(0, btnWidth, 0, btnHeight),
@@ -153,7 +152,6 @@ function DupeTab:CreateFloatingButtons(parent)
     self.FloatingButtons.BtnDeletePet.Visible = false
     self.UIFactory.AddStroke(self.FloatingButtons.BtnDeletePet, Color3.fromRGB(255, 100, 100), 1.5, 0.3)
     
-    -- 🔹 Crate Action
     self.FloatingButtons.BtnAddAll1k = self.UIFactory.CreateButton({
         Size = UDim2.new(0, 130, 0, btnHeight),
         Position = UDim2.new(1, -138, 1, -36),
@@ -198,15 +196,14 @@ function DupeTab:SwitchSubTab(name)
     self.StateManager.selectedPets = {}
     self.StateManager.selectedCrates = {}
     
-    -- Update Sub-tab Buttons
+    -- Update Buttons Style
     for tabName, btn in pairs(self.SubTabButtons) do
         local isSelected = (tabName == name)
         btn.BackgroundColor3 = isSelected and THEME.AccentBlue or THEME.BtnDefault
         btn.TextColor3 = isSelected and THEME.TextWhite or THEME.TextGray
     end
     
-    -- ✨ แสดง/ซ่อน Floating Buttons ตามแท็บ
-    -- Safety checks added to prevent nil indexing
+    -- Update Floating Buttons Visibility
     if name == "Pets" then
         if self.FloatingButtons.BtnDeletePet then self.FloatingButtons.BtnDeletePet.Visible = true end
         if self.FloatingButtons.BtnEvoPet then self.FloatingButtons.BtnEvoPet.Visible = true end
@@ -222,6 +219,15 @@ function DupeTab:SwitchSubTab(name)
     else  -- Items
         for _, btn in pairs(self.FloatingButtons) do
             if btn then btn.Visible = false end
+        end
+    end
+    
+    -- ✨ Update Info Label (Warning Text)
+    if self.InfoLabel then
+        if name == "Items" then
+            self.InfoLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K"
+        else
+            self.InfoLabel.Text = "" -- เคลียร์ข้อความถ้าไม่ใช่หน้า Items
         end
     end
     
@@ -246,16 +252,18 @@ function DupeTab:RefreshInventory()
     end
 end
 
--- ✨ แสดง Warning inline ใน StatusBar แทน
+-- ✨ ลบฟังก์ชัน UpdateStatusWarning เก่าที่ทับซ้อนออก หรือเปลี่ยนให้เช็ค InfoLabel แทน
 function DupeTab:UpdateStatusWarning()
-    if self.CurrentSubTab == "Items" and self.StatusLabel then
-        local THEME = self.Config.THEME
-        self.StatusLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K"
-        self.StatusLabel.TextColor3 = THEME.Warning
+    -- ฟังก์ชันนี้ไม่จำเป็นแล้ว เพราะเราจัดการใน SwitchSubTab 
+    -- แต่ใส่ไว้กันเหนียวเผื่อเรียกใช้ที่อื่น
+    if self.CurrentSubTab == "Items" and self.InfoLabel then
+        self.InfoLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K"
+    elseif self.InfoLabel then
+        self.InfoLabel.Text = ""
     end
 end
 
--- ============================ RENDERING ============================
+-- ============================ RENDERING (ตัดส่วนที่ไม่เกี่ยวข้องออกเพื่อความกระชับ) ============================
 
 function DupeTab:RenderItemDupeGrid()
     local THEME = self.Config.THEME
@@ -284,13 +292,18 @@ function DupeTab:RenderItemDupeGrid()
     local recipes = DUPE_RECIPES.Items or {}
     local playerData = self.InventoryManager.GetPlayerData()
     
-    -- ✨ แสดง warning ใน StatusBar
+    -- Ensure warning is shown
     self:UpdateStatusWarning()
     
     for _, recipe in ipairs(recipes) do
         self:CreateItemCard(recipe, playerData)
     end
 end
+
+-- ... (ส่วน CreateItemCard และฟังก์ชันอื่นๆ เหมือนเดิม ไม่ต้องแก้) ...
+
+-- (ใส่ฟังก์ชันที่เหลือ CreateItemCard, RenderCrateGrid, etc. กลับเข้ามาตามเดิมจากไฟล์ก่อนหน้า)
+-- เพื่อให้ Script ทำงานได้สมบูรณ์ ผมจะใส่ function ที่จำเป็นที่เหลือไว้ให้ครบครับ
 
 function DupeTab:CreateItemCard(recipe, playerData)
     local THEME = self.Config.THEME
@@ -459,10 +472,7 @@ function DupeTab:RenderCrateGrid()
     end
     table.sort(cratesList, function(a, b) return a.DisplayName < b.DisplayName end)
     
-    -- Add All Button Logic (FIXED)
     if self.AddAllConn then self.AddAllConn:Disconnect() end
-    
-    -- Added Check to prevent nil indexing if button doesn't exist
     if self.FloatingButtons.BtnAddAll1k then
         self.AddAllConn = self.FloatingButtons.BtnAddAll1k.MouseButton1Click:Connect(function()
             self:OnAddAllCrates(cratesList, inventoryCrates)
@@ -592,28 +602,53 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
         self.FloatingButtons.BtnAddAll1k.Active = false
         self.FloatingButtons.BtnAddAll1k.Text = "ADDING..."
     end
-    self.StateManager:SetStatus("🚀 Adding all crates (1,000 each)...", THEME.AccentBlue, self.StatusLabel)
+    self.StateManager:SetStatus("🚀 Adding missing crates (1,000)...", THEME.AccentBlue, self.StatusLabel)
     
     task.spawn(function()
         local addedCount = 0
-        for _, crate in ipairs(cratesList) do
+        
+        for i, crate in ipairs(cratesList) do
             local amountInInv = inventoryCrates[crate.DisplayName] or inventoryCrates[crate.InternalID]
-            if amountInInv == nil then
+            
+            -- เช็ค: 1.ต้องไม่มีในตัว 2.ต้องยังไม่เคยเลือกเข้าเทรด
+            local isAlreadySelected = self.StateManager.selectedCrates[crate.DisplayName] 
+                                      or self.StateManager:IsInTrade(crate.DisplayName)
+            
+            if amountInInv == nil and not isAlreadySelected then
+                
+                -- ✅ บังคับค่า State เป็น 1000 ทันที
+                self.StateManager.selectedCrates[crate.DisplayName] = 1000
+
+                -- ส่งคำสั่งเทรด 1000
                 self.TradeManager.SendTradeSignal("Add", {
                     Name = crate.DisplayName,
                     Service = "CratesService",
                     Category = "Crates"
                 }, 1000, self.StatusLabel, self.StateManager, self.Utils)
+                
                 addedCount = addedCount + 1
+                
+                -- ✅ รีเฟรชหน้าจอทุกๆ 5 ชิ้น เพื่อให้เห็นเลข x1000 เด้งขึ้นมาเลย (ไม่ต้องรอจบ)
+                if addedCount % 5 == 0 then
+                    self:RefreshInventory()
+                end
+                
                 task.wait(0.05)
             end
         end
-        self.StateManager:SetStatus("✅ Added " .. addedCount .. " types!", THEME.Success, self.StatusLabel)
+        
+        if addedCount > 0 then
+            self.StateManager:SetStatus("✅ Added " .. addedCount .. " new types!", THEME.Success, self.StatusLabel)
+        else
+            self.StateManager:SetStatus("✨ Nothing new to add", THEME.TextGray, self.StatusLabel)
+        end
         
         if self.FloatingButtons.BtnAddAll1k then
             self.FloatingButtons.BtnAddAll1k.Active = true
             self.FloatingButtons.BtnAddAll1k.Text = "➕ ADD 1K ALL"
         end
+        
+        -- รีเฟรชครั้งสุดท้ายปิดท้าย
         self:RefreshInventory()
     end)
 end
@@ -635,7 +670,6 @@ function DupeTab:RenderPetDupeGrid()
         ["I2Pet"] = true
     }
     
-    -- Tooltip Setup
     if not self.TooltipRef then
         local tip = Instance.new("TextLabel", self.ScreenGui)
         tip.Name = "GlobalTooltip"
@@ -921,9 +955,7 @@ function DupeTab:CreatePetCard(petData, EquippedUUIDs, allData)
         end
     end)
 end
--- ============================
--- PET ACTION HANDLERS
--- ============================
+
 function DupeTab:OnDeletePets()
     local THEME = self.Config.THEME
     
@@ -1014,26 +1046,23 @@ function DupeTab:UpdateEvoButtonState()
     
     self.FloatingButtons.BtnEvoPet.Text = btnText
     
-    -- ✨ ปรับสีและ stroke ให้เห็นชัดว่ากดได้หรือไม่
     if isValid then
         self.FloatingButtons.BtnEvoPet.BackgroundColor3 = THEME.AccentPurple
         self.FloatingButtons.BtnEvoPet.AutoButtonColor = true
         self.FloatingButtons.BtnEvoPet.TextTransparency = 0
         self.FloatingButtons.BtnEvoPet.TextColor3 = THEME.TextWhite
         
-        -- เพิ่ม glow effect
         if self.FloatingButtons.BtnEvoPet:FindFirstChild("UIStroke") then
             self.FloatingButtons.BtnEvoPet.UIStroke.Color = Color3.fromRGB(150, 160, 255)
             self.FloatingButtons.BtnEvoPet.UIStroke.Thickness = 2
             self.FloatingButtons.BtnEvoPet.UIStroke.Transparency = 0.2
         end
     else
-        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = Color3.fromRGB(35, 35, 40)  -- เข้มชัด
+        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         self.FloatingButtons.BtnEvoPet.AutoButtonColor = false
         self.FloatingButtons.BtnEvoPet.TextTransparency = 0.3
         self.FloatingButtons.BtnEvoPet.TextColor3 = Color3.fromRGB(100, 100, 105)
         
-        -- ลด glow
         if self.FloatingButtons.BtnEvoPet:FindFirstChild("UIStroke") then
             self.FloatingButtons.BtnEvoPet.UIStroke.Color = Color3.fromRGB(60, 60, 70)
             self.FloatingButtons.BtnEvoPet.UIStroke.Thickness = 1
@@ -1044,9 +1073,6 @@ function DupeTab:UpdateEvoButtonState()
     self.FloatingButtons.BtnEvoPet:SetAttribute("IsValid", isValid)
 end
 
--- ============================
--- POPUPS
--- ============================
 function DupeTab:ShowQuantityPopup(itemData, onConfirm)
     local THEME = self.Config.THEME
     
