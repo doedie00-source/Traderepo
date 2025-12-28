@@ -19,10 +19,28 @@ function StateManager:SetStatus(text, color, statusLabel)
     local CONFIG = Config.CONFIG
     
     if self.statusResetTask then task.cancel(self.statusResetTask) end
-    statusLabel.Text = text
+    
+    -- ✨ เพิ่ม Icon ตามสถานะ
+    local icon = "🟢"
+    if color == THEME.Success then
+        icon = "✅"
+    elseif color == THEME.Fail then
+        icon = "❌"
+    elseif color == THEME.Warning then
+        icon = "⚠️"
+    elseif color == THEME.AccentBlue or color == THEME.AccentPurple or color == THEME.BtnDupe then
+        icon = "🔄"
+    elseif color == THEME.PlayerBtn then
+        icon = "🚀"
+    end
+    
+    -- อัพเดทข้อความพร้อม icon
+    statusLabel.Text = icon .. " " .. text
     statusLabel.TextColor3 = color or THEME.TextGray
+    
+    -- Reset หลังจากผ่านไประยะเวลา
     self.statusResetTask = task.delay(CONFIG.STATUS_RESET_DELAY, function()
-        statusLabel.Text = "Ready."
+        statusLabel.Text = "🟢 Ready"
         statusLabel.TextColor3 = THEME.TextGray
     end)
 end
