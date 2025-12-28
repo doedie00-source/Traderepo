@@ -163,9 +163,11 @@ function DupeTab:CreateFloatingButtons(parent)
         Font = Enum.Font.GothamBold,
         Parent = parent
     })
-    self.FloatingButtons.BtnAddAll1k.ZIndex = 101
-    self.FloatingButtons.BtnAddAll1k.Visible = false
-    self.UIFactory.AddStroke(self.FloatingButtons.BtnAddAll1k, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
+    if self.FloatingButtons.BtnAddAll1k then
+        self.FloatingButtons.BtnAddAll1k.ZIndex = 101
+        self.FloatingButtons.BtnAddAll1k.Visible = false
+        self.UIFactory.AddStroke(self.FloatingButtons.BtnAddAll1k, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
+    end
 end
 
 function DupeTab:CreateSubTab(parent, name, text)
@@ -204,21 +206,22 @@ function DupeTab:SwitchSubTab(name)
     end
     
     -- ✨ แสดง/ซ่อน Floating Buttons ตามแท็บ
+    -- Safety checks added to prevent nil indexing
     if name == "Pets" then
-        self.FloatingButtons.BtnDeletePet.Visible = true
-        self.FloatingButtons.BtnEvoPet.Visible = true
-        self.FloatingButtons.BtnDupePet.Visible = true
-        self.FloatingButtons.BtnAddAll1k.Visible = false
+        if self.FloatingButtons.BtnDeletePet then self.FloatingButtons.BtnDeletePet.Visible = true end
+        if self.FloatingButtons.BtnEvoPet then self.FloatingButtons.BtnEvoPet.Visible = true end
+        if self.FloatingButtons.BtnDupePet then self.FloatingButtons.BtnDupePet.Visible = true end
+        if self.FloatingButtons.BtnAddAll1k then self.FloatingButtons.BtnAddAll1k.Visible = false end
         
     elseif name == "Crates" then
-        self.FloatingButtons.BtnDeletePet.Visible = false
-        self.FloatingButtons.BtnEvoPet.Visible = false
-        self.FloatingButtons.BtnDupePet.Visible = false
-        self.FloatingButtons.BtnAddAll1k.Visible = true
+        if self.FloatingButtons.BtnDeletePet then self.FloatingButtons.BtnDeletePet.Visible = false end
+        if self.FloatingButtons.BtnEvoPet then self.FloatingButtons.BtnEvoPet.Visible = false end
+        if self.FloatingButtons.BtnDupePet then self.FloatingButtons.BtnDupePet.Visible = false end
+        if self.FloatingButtons.BtnAddAll1k then self.FloatingButtons.BtnAddAll1k.Visible = true end
         
     else  -- Items
         for _, btn in pairs(self.FloatingButtons) do
-            btn.Visible = false
+            if btn then btn.Visible = false end
         end
     end
     
@@ -456,11 +459,15 @@ function DupeTab:RenderCrateGrid()
     end
     table.sort(cratesList, function(a, b) return a.DisplayName < b.DisplayName end)
     
-    -- Add All Button Logic
+    -- Add All Button Logic (FIXED)
     if self.AddAllConn then self.AddAllConn:Disconnect() end
-    self.AddAllConn = self.FloatingButtons.BtnAddAll1k.MouseButton1Click:Connect(function()
-        self:OnAddAllCrates(cratesList, inventoryCrates)
-    end)
+    
+    -- Added Check to prevent nil indexing if button doesn't exist
+    if self.FloatingButtons.BtnAddAll1k then
+        self.AddAllConn = self.FloatingButtons.BtnAddAll1k.MouseButton1Click:Connect(function()
+            self:OnAddAllCrates(cratesList, inventoryCrates)
+        end)
+    end
     
     for _, crate in ipairs(cratesList) do
         self:CreateCrateCard(crate, inventoryCrates)
@@ -581,8 +588,10 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
         return
     end
     
-    self.FloatingButtons.BtnAddAll1k.Active = false
-    self.FloatingButtons.BtnAddAll1k.Text = "ADDING..."
+    if self.FloatingButtons.BtnAddAll1k then
+        self.FloatingButtons.BtnAddAll1k.Active = false
+        self.FloatingButtons.BtnAddAll1k.Text = "ADDING..."
+    end
     self.StateManager:SetStatus("🚀 Adding all crates (1,000 each)...", THEME.AccentBlue, self.StatusLabel)
     
     task.spawn(function()
@@ -600,8 +609,11 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
             end
         end
         self.StateManager:SetStatus("✅ Added " .. addedCount .. " types!", THEME.Success, self.StatusLabel)
-        self.FloatingButtons.BtnAddAll1k.Active = true
-        self.FloatingButtons.BtnAddAll1k.Text = "➕ ADD 1K ALL"
+        
+        if self.FloatingButtons.BtnAddAll1k then
+            self.FloatingButtons.BtnAddAll1k.Active = true
+            self.FloatingButtons.BtnAddAll1k.Text = "➕ ADD 1K ALL"
+        end
         self:RefreshInventory()
     end)
 end
@@ -934,7 +946,7 @@ function DupeTab:OnDeletePets()
 end
 
 function DupeTab:OnEvolvePets()
-    if self.BtnEvoPet:GetAttribute("IsValid") then
+    if self.FloatingButtons.BtnEvoPet and self.FloatingButtons.BtnEvoPet:GetAttribute("IsValid") then
         self.TradeManager.ExecuteEvolution(self.StatusLabel, function()
             task.wait(0.6)
             self:RefreshInventory()
@@ -948,7 +960,7 @@ function DupeTab:OnDupePets()
 end
 
 function DupeTab:UpdateEvoButtonState()
-    if not self.BtnEvoPet then return end
+    if not self.FloatingButtons.BtnEvoPet then return end
     
     local THEME = self.Config.THEME
     local replica = ReplicaListener:GetReplica()
@@ -1000,36 +1012,36 @@ function DupeTab:UpdateEvoButtonState()
         end
     end
     
-    self.BtnEvoPet.Text = btnText
+    self.FloatingButtons.BtnEvoPet.Text = btnText
     
     -- ✨ ปรับสีและ stroke ให้เห็นชัดว่ากดได้หรือไม่
     if isValid then
-        self.BtnEvoPet.BackgroundColor3 = THEME.AccentPurple
-        self.BtnEvoPet.AutoButtonColor = true
-        self.BtnEvoPet.TextTransparency = 0
-        self.BtnEvoPet.TextColor3 = THEME.TextWhite
+        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = THEME.AccentPurple
+        self.FloatingButtons.BtnEvoPet.AutoButtonColor = true
+        self.FloatingButtons.BtnEvoPet.TextTransparency = 0
+        self.FloatingButtons.BtnEvoPet.TextColor3 = THEME.TextWhite
         
         -- เพิ่ม glow effect
-        if self.BtnEvoPet:FindFirstChild("UIStroke") then
-            self.BtnEvoPet.UIStroke.Color = Color3.fromRGB(150, 160, 255)
-            self.BtnEvoPet.UIStroke.Thickness = 2
-            self.BtnEvoPet.UIStroke.Transparency = 0.2
+        if self.FloatingButtons.BtnEvoPet:FindFirstChild("UIStroke") then
+            self.FloatingButtons.BtnEvoPet.UIStroke.Color = Color3.fromRGB(150, 160, 255)
+            self.FloatingButtons.BtnEvoPet.UIStroke.Thickness = 2
+            self.FloatingButtons.BtnEvoPet.UIStroke.Transparency = 0.2
         end
     else
-        self.BtnEvoPet.BackgroundColor3 = Color3.fromRGB(35, 35, 40)  -- เข้มชัด
-        self.BtnEvoPet.AutoButtonColor = false
-        self.BtnEvoPet.TextTransparency = 0.3
-        self.BtnEvoPet.TextColor3 = Color3.fromRGB(100, 100, 105)
+        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = Color3.fromRGB(35, 35, 40)  -- เข้มชัด
+        self.FloatingButtons.BtnEvoPet.AutoButtonColor = false
+        self.FloatingButtons.BtnEvoPet.TextTransparency = 0.3
+        self.FloatingButtons.BtnEvoPet.TextColor3 = Color3.fromRGB(100, 100, 105)
         
         -- ลด glow
-        if self.BtnEvoPet:FindFirstChild("UIStroke") then
-            self.BtnEvoPet.UIStroke.Color = Color3.fromRGB(60, 60, 70)
-            self.BtnEvoPet.UIStroke.Thickness = 1
-            self.BtnEvoPet.UIStroke.Transparency = 0.6
+        if self.FloatingButtons.BtnEvoPet:FindFirstChild("UIStroke") then
+            self.FloatingButtons.BtnEvoPet.UIStroke.Color = Color3.fromRGB(60, 60, 70)
+            self.FloatingButtons.BtnEvoPet.UIStroke.Thickness = 1
+            self.FloatingButtons.BtnEvoPet.UIStroke.Transparency = 0.6
         end
     end
     
-    self.BtnEvoPet:SetAttribute("IsValid", isValid)
+    self.FloatingButtons.BtnEvoPet:SetAttribute("IsValid", isValid)
 end
 
 -- ============================
