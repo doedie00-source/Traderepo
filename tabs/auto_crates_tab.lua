@@ -28,10 +28,10 @@ function AutoCratesTab.new(deps)
     self.InfoLabel = deps.InfoLabel
     
     self.Container = nil
-    self.SelectedCrates = {} -- {CrateName = amount to open}
-    self.CrateCards = {} -- {CrateName = {Card, CheckBox, Input}}
+    self.SelectedCrates = {}
+    self.CrateCards = {}
     self.IsProcessing = false
-    self.ShouldStop = false -- ✅ Flag สำหรับหยุดการทำงาน
+    self.ShouldStop = false
     
     return self
 end
@@ -39,7 +39,6 @@ end
 function AutoCratesTab:Init(parent)
     local THEME = self.Config.THEME
     
-    -- Header
     local header = Instance.new("Frame", parent)
     header.Size = UDim2.new(1, 0, 0, 88)
     header.BackgroundTransparency = 1
@@ -66,7 +65,6 @@ function AutoCratesTab:Init(parent)
         TextXAlign = Enum.TextXAlignment.Left
     })
     
-    -- Action Buttons Container
     local btnContainer = Instance.new("Frame", header)
     btnContainer.Size = UDim2.new(1, -8, 0, 32)
     btnContainer.Position = UDim2.new(0, 8, 0, 42)
@@ -76,7 +74,6 @@ function AutoCratesTab:Init(parent)
     btnLayout.FillDirection = Enum.FillDirection.Horizontal
     btnLayout.Padding = UDim.new(0, 8)
     
-    -- ✅ Toggle Select All/Unselect All Button
     self.SelectAllBtn = self.UIFactory.CreateButton({
         Parent = btnContainer,
         Text = "✓ SELECT ALL",
@@ -88,7 +85,6 @@ function AutoCratesTab:Init(parent)
     })
     self.UIFactory.AddStroke(self.SelectAllBtn, Color3.fromRGB(140, 160, 255), 1, 0.4)
     
-    -- ✅ Start/Stop Open Button
     self.AutoOpenBtn = self.UIFactory.CreateButton({
         Parent = btnContainer,
         Text = "🚀 START OPEN",
@@ -100,11 +96,9 @@ function AutoCratesTab:Init(parent)
     })
     self.UIFactory.AddStroke(self.AutoOpenBtn, Color3.fromRGB(100, 255, 150), 2, 0.3)
     
-    -- Setup button clicks
     self.SelectAllBtn.MouseButton1Click:Connect(function() self:ToggleSelectAll() end)
     self.AutoOpenBtn.MouseButton1Click:Connect(function() self:ToggleAutoOpen() end)
     
-    -- Scrolling Container
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
         Size = UDim2.new(1, 0, 1, -92),
@@ -125,7 +119,6 @@ function AutoCratesTab:Init(parent)
     padding.PaddingRight = UDim.new(0, 4)
     padding.PaddingBottom = UDim.new(0, 12)
     
-    -- ✅ ลดขนาดการ์ดลง: 90x100
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
     layout.CellSize = UDim2.new(0, 90, 0, 100)
     layout.CellPadding = UDim2.new(0, 6, 0, 6)
@@ -138,7 +131,6 @@ function AutoCratesTab:Init(parent)
 end
 
 function AutoCratesTab:RefreshInventory()
-    -- Clear old cards
     for _, child in pairs(self.Container:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
@@ -170,7 +162,6 @@ end
 
 function AutoCratesTab:CreateCrateCard(crate)
     local THEME = self.Config.THEME
-    
     local isSelected = self.SelectedCrates[crate.Name] ~= nil
     
     local Card = Instance.new("Frame", self.Container)
@@ -186,7 +177,7 @@ function AutoCratesTab:CreateCrateCard(crate)
     Stroke.Color = isSelected and THEME.AccentGreen or THEME.GlassStroke
     Stroke.Transparency = 0.5
     
-    -- Checkbox (มุมซ้ายบน)
+    -- Checkbox
     local CheckBox = Instance.new("Frame", Card)
     CheckBox.Size = UDim2.new(0, 16, 0, 16)
     CheckBox.Position = UDim2.new(0, 4, 0, 4)
@@ -195,8 +186,11 @@ function AutoCratesTab:CreateCrateCard(crate)
     CheckBox.ZIndex = 15
     
     self.UIFactory.AddCorner(CheckBox, 4)
-    local cbStroke = self.UIFactory.AddStroke(CheckBox, isSelected and THEME.AccentGreen or THEME.GlassStroke, 1, 0.5)
-    cbStroke.ZIndex = 15
+    
+    local cbStroke = Instance.new("UIStroke", CheckBox)
+    cbStroke.Color = isSelected and THEME.AccentGreen or THEME.GlassStroke
+    cbStroke.Thickness = 1
+    cbStroke.Transparency = 0.5
     
     local CheckMark = self.UIFactory.CreateLabel({
         Parent = CheckBox,
@@ -208,17 +202,19 @@ function AutoCratesTab:CreateCrateCard(crate)
     })
     CheckMark.ZIndex = 16
     
-    -- ✅ จำนวนทั้งหมด (มุมขวาบน)
+    -- Total Badge
     local TotalBadge = Instance.new("Frame", Card)
     TotalBadge.Size = UDim2.new(0, 32, 0, 16)
     TotalBadge.Position = UDim2.new(1, -36, 0, 4)
     TotalBadge.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
     TotalBadge.BorderSizePixel = 0
-    TotalBadge.ZIndex = 15
     
     self.UIFactory.AddCorner(TotalBadge, 4)
-    local totalStroke = self.UIFactory.AddStroke(TotalBadge, THEME.GlassStroke, 1, 0.5)
-    totalStroke.ZIndex = 15
+    
+    local totalStroke = Instance.new("UIStroke", TotalBadge)
+    totalStroke.Color = THEME.GlassStroke
+    totalStroke.Thickness = 1
+    totalStroke.Transparency = 0.5
     
     local TotalLabel = self.UIFactory.CreateLabel({
         Parent = TotalBadge,
@@ -228,9 +224,8 @@ function AutoCratesTab:CreateCrateCard(crate)
         TextSize = 9,
         Font = Enum.Font.Code
     })
-    TotalLabel.ZIndex = 16
     
-    -- Crate Image (ตรงกลาง)
+    -- Image
     local Image = Instance.new("ImageLabel", Card)
     Image.Size = UDim2.new(0, 45, 0, 45)
     Image.Position = UDim2.new(0.5, -22.5, 0, 22)
@@ -240,7 +235,7 @@ function AutoCratesTab:CreateCrateCard(crate)
     Image.Image = imgId
     Image.ScaleType = Enum.ScaleType.Fit
     
-    -- Name Label
+    -- Name
     local NameLbl = self.UIFactory.CreateLabel({
         Parent = Card,
         Text = crate.Name,
@@ -252,17 +247,19 @@ function AutoCratesTab:CreateCrateCard(crate)
     })
     NameLbl.TextWrapped = true
     
-    -- ✅ Amount Input (ไม่มี "Open:" แค่ช่องใส่ตัวเลข)
+    -- Input
     local InputContainer = Instance.new("Frame", Card)
     InputContainer.Size = UDim2.new(1, -10, 0, 18)
     InputContainer.Position = UDim2.new(0, 5, 1, -22)
     InputContainer.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
     InputContainer.BorderSizePixel = 0
-    InputContainer.ZIndex = 10
     
     self.UIFactory.AddCorner(InputContainer, 4)
-    local inputStroke = self.UIFactory.AddStroke(InputContainer, THEME.GlassStroke, 1, 0.5)
-    inputStroke.ZIndex = 10
+    
+    local inputStroke = Instance.new("UIStroke", InputContainer)
+    inputStroke.Color = THEME.GlassStroke
+    inputStroke.Thickness = 1
+    inputStroke.Transparency = 0.5
     
     local AmountInput = Instance.new("TextBox", InputContainer)
     AmountInput.Size = UDim2.new(1, -8, 1, -2)
@@ -275,12 +272,10 @@ function AutoCratesTab:CreateCrateCard(crate)
     AmountInput.ClearTextOnFocus = false
     AmountInput.PlaceholderText = tostring(crate.Amount)
     AmountInput.TextXAlignment = Enum.TextXAlignment.Center
-    AmountInput.ZIndex = 11
     
-    -- ✅ Sanitize input
     self.Utils.SanitizeNumberInput(AmountInput, crate.Amount, 1)
     
-    -- Click to Toggle Selection
+    -- Click Button
     local ClickBtn = Instance.new("TextButton", Card)
     ClickBtn.Size = UDim2.new(1, 0, 0, 85)
     ClickBtn.Position = UDim2.new(0, 0, 0, 0)
@@ -300,32 +295,25 @@ function AutoCratesTab:CreateCrateCard(crate)
         end
         
         if self.SelectedCrates[crate.Name] then
-            -- Deselect
             self.SelectedCrates[crate.Name] = nil
             Stroke.Color = THEME.GlassStroke
             Stroke.Thickness = 1
             CheckBox.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
             CheckMark.Text = ""
-            if CheckBox:FindFirstChild("UIStroke") then
-                CheckBox.UIStroke.Color = THEME.GlassStroke
-            end
+            cbStroke.Color = THEME.GlassStroke
         else
-            -- Select
             self.SelectedCrates[crate.Name] = amount
             Stroke.Color = THEME.AccentGreen
             Stroke.Thickness = 2
             CheckBox.BackgroundColor3 = THEME.AccentGreen
             CheckMark.Text = "✓"
-            if CheckBox:FindFirstChild("UIStroke") then
-                CheckBox.UIStroke.Color = THEME.AccentGreen
-            end
+            cbStroke.Color = THEME.AccentGreen
         end
         
         self:UpdateInfoLabel()
         self:UpdateSelectButton()
     end)
     
-    -- Update amount when input changes
     AmountInput:GetPropertyChangedSignal("Text"):Connect(function()
         local amount = tonumber(AmountInput.Text) or 0
         
@@ -349,22 +337,17 @@ function AutoCratesTab:CreateCrateCard(crate)
         CheckMark = CheckMark,
         Input = AmountInput,
         Stroke = Stroke,
+        CheckBoxStroke = cbStroke,
         MaxAmount = crate.Amount
     }
 end
 
--- ✅ Toggle Select All / Unselect All
 function AutoCratesTab:ToggleSelectAll()
-    local allSelected = self:AreAllSelected()
-    
-    if allSelected then
-        -- Unselect All
+    if self:AreAllSelected() then
         self:DeselectAll()
     else
-        -- Select All
         self:SelectAll()
     end
-    
     self:UpdateSelectButton()
 end
 
@@ -401,9 +384,7 @@ function AutoCratesTab:SelectAll()
             data.Stroke.Thickness = 2
             data.CheckBox.BackgroundColor3 = self.Config.THEME.AccentGreen
             data.CheckMark.Text = "✓"
-            if data.CheckBox:FindFirstChild("UIStroke") then
-                data.CheckBox.UIStroke.Color = self.Config.THEME.AccentGreen
-            end
+            data.CheckBoxStroke.Color = self.Config.THEME.AccentGreen
         end
     end
     self:UpdateInfoLabel()
@@ -416,9 +397,7 @@ function AutoCratesTab:DeselectAll()
         data.Stroke.Thickness = 1
         data.CheckBox.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
         data.CheckMark.Text = ""
-        if data.CheckBox:FindFirstChild("UIStroke") then
-            data.CheckBox.UIStroke.Color = self.Config.THEME.GlassStroke
-        end
+        data.CheckBoxStroke.Color = self.Config.THEME.GlassStroke
     end
     self:UpdateInfoLabel()
 end
@@ -441,15 +420,12 @@ function AutoCratesTab:UpdateInfoLabel()
     end
 end
 
--- ✅ Toggle Start/Stop Auto Open
 function AutoCratesTab:ToggleAutoOpen()
     if self.IsProcessing then
-        -- Stop
         self.ShouldStop = true
         self.AutoOpenBtn.Text = "⏸️ STOPPING..."
         self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.Warning
     else
-        -- Start
         self:StartAutoOpen()
     end
 end
@@ -494,7 +470,6 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
     local totalTypes = #selectedList
     
     for typeIndex, crateData in ipairs(selectedList) do
-        -- ✅ เช็คว่าถูกหยุดหรือไม่
         if self.ShouldStop then
             self.StateManager:SetStatus("⏸️ Stopped by user", THEME.Warning, self.StatusLabel)
             break
@@ -511,10 +486,7 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
         )
         
         while opened < targetAmount do
-            -- ✅ เช็คว่าถูกหยุดหรือไม่ ทุกรอบ
-            if self.ShouldStop then
-                break
-            end
+            if self.ShouldStop then break end
             
             local remaining = targetAmount - opened
             local batchSize = math.min(8, remaining)
@@ -549,9 +521,7 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
             end
         end
         
-        -- เคลียร์รายการที่เปิดเสร็จแล้ว
         self.SelectedCrates[crateName] = nil
-        
         task.wait(0.2)
     end
     
