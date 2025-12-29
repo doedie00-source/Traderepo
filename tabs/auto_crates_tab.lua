@@ -316,14 +316,15 @@ function AutoCratesTab:CreateCrateCard(crate)
     end)
     
     self.CrateCards[crate.Name] = {
-        Card = Card,
+        Card = Card, -- ✅ เก็บ Card reference ด้วย
         CheckBox = CheckBox,
         CheckMark = CheckMark,
         Input = AmountInput,
         Stroke = Stroke,
         CheckBoxStroke = cbStroke,
         MaxAmount = crate.Amount,
-        DefaultAmount = defaultAmount
+        DefaultAmount = defaultAmount,
+        ClickBtn = ClickBtn
     }
 end
 
@@ -441,6 +442,19 @@ function AutoCratesTab:StartAutoOpen()
     -- ✅ Disable SELECT ALL button
     self.SelectAllBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     self.SelectAllBtn.TextColor3 = Color3.fromRGB(100, 100, 100)
+    
+    -- ✅ Disable การคลิกทุกการ์ด และทำให้โปร่งแสง
+    for _, cardData in pairs(self.CrateCards) do
+        if cardData.ClickBtn then
+            cardData.ClickBtn.Active = false
+        end
+        if cardData.Input then
+            cardData.Input.TextEditable = false
+        end
+        if cardData.Card then
+            cardData.Card.BackgroundTransparency = 0.5 -- ทำให้โปร่งแสงเพื่อบอกว่า Lock
+        end
+    end
     
     task.spawn(function()
         self:ProcessCrateOpening(selectedList)
@@ -566,6 +580,19 @@ function AutoCratesTab:ResetButton()
     -- ✅ Enable SELECT ALL button กลับ
     self:UpdateSelectButton()
     self.SelectAllBtn.TextColor3 = self.Config.THEME.TextWhite
+    
+    -- ✅ Enable การคลิกทุกการ์ดกลับ และคืนความโปร่งแสง
+    for _, cardData in pairs(self.CrateCards) do
+        if cardData.ClickBtn then
+            cardData.ClickBtn.Active = true
+        end
+        if cardData.Input then
+            cardData.Input.TextEditable = true
+        end
+        if cardData.Card then
+            cardData.Card.BackgroundTransparency = 0.2 -- คืนค่าปกติ
+        end
+    end
 end
 
 return AutoCratesTab
