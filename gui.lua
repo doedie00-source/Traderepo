@@ -1,5 +1,5 @@
 -- gui.lua
--- Main GUI Controller - FIXED RIGHT INFO LABEL
+-- Main GUI Controller - WITH AUTO CRATES TAB
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -71,7 +71,7 @@ function GUI:Initialize()
     self.ContentArea.BackgroundTransparency = 1
     self.ContentArea.BorderSizePixel = 0
 
-    -- ✨ Status Bar Container (พื้นหลัง)
+    -- Status Bar Container
     local StatusBarBg = Instance.new("Frame", self.MainFrame)
     StatusBarBg.Name = "StatusBar"
     StatusBarBg.Size = UDim2.new(1, -16, 0, 30)
@@ -88,11 +88,11 @@ function GUI:Initialize()
     topLine.BorderSizePixel = 0
     topLine.ZIndex = 101
 
-    -- ✨ Status Label (ซ้าย - สำหรับสถานะระบบ)
+    -- Status Label
     self.StatusLabel = self.UIFactory.CreateLabel({
         Parent = StatusBarBg,
         Text = "🟢 Ready",
-        Size = UDim2.new(0.6, 0, 1, 0), -- ใช้พื้นที่ 60% ทางซ้าย
+        Size = UDim2.new(0.6, 0, 1, 0),
         Position = UDim2.new(0, 12, 0, 0),
         TextColor = THEME.TextGray,
         TextSize = 11,
@@ -100,17 +100,17 @@ function GUI:Initialize()
         TextXAlign = Enum.TextXAlignment.Left
     })
     
-    -- ✨ Info Label (ขวา - สำหรับ Warning Limits)
+    -- Info Label
     self.InfoLabel = self.UIFactory.CreateLabel({
         Parent = StatusBarBg,
         Text = "",
-        Size = UDim2.new(0.4, -12, 1, 0), -- ใช้พื้นที่ 40% ทางขวา
+        Size = UDim2.new(0.4, -12, 1, 0),
         Position = UDim2.new(1, -12, 0, 0),
         AnchorPoint = Vector2.new(1, 0),
         TextColor = THEME.Warning,
         TextSize = 10,
         Font = Enum.Font.GothamBold,
-        TextXAlign = Enum.TextXAlignment.Right -- ชิดขวา
+        TextXAlign = Enum.TextXAlignment.Right
     })
 
     self:SwitchTab("Players")
@@ -247,6 +247,7 @@ function GUI:CreateSidebar()
     
     self:CreateSidebarButton(btnContainer, "Players", "👥 Players")
     self:CreateSidebarButton(btnContainer, "Dupe", "✨ Dupe")
+    self:CreateSidebarButton(btnContainer, "AutoCrates", "🎁 Auto") -- ✅ เพิ่มบรรทัดนี้
 end
 
 function GUI:CreateSidebarButton(parent, tabName, text)
@@ -269,12 +270,9 @@ function GUI:CreateSidebarButton(parent, tabName, text)
     self.SidebarButtons[tabName] = btn
 end
 
--- ในไฟล์ gui.lua
-
 function GUI:SwitchTab(tabName)
     local THEME = self.Config.THEME
     
-    -- ✅ FIX: ถ้าเทรดเปิดอยู่ และพยายามไปหน้า Players → บังคับไป Inventory แทน
     if tabName == "Players" and self.Utils.IsTradeActive() then
         tabName = "Inventory"
         if self.StatusLabel then
@@ -284,7 +282,6 @@ function GUI:SwitchTab(tabName)
     
     self.StateManager.currentMainTab = tabName
     
-    -- Animation ปุ่มเมนูซ้าย (คงเดิม)
     for name, btn in pairs(self.SidebarButtons) do
         local isSelected = (name == tabName)
         local targetColor = isSelected and THEME.AccentPurple or THEME.BtnDefault
@@ -294,18 +291,15 @@ function GUI:SwitchTab(tabName)
         TweenService:Create(btn, TweenInfo.new(0.2), {TextColor3 = targetTextColor}):Play()
     end
     
-    -- Clear content เก่า
     for _, child in pairs(self.ContentArea:GetChildren()) do
         child:Destroy()
     end
     self.ActiveTabInstance = nil
 
-    -- ล้าง InfoLabel
     if self.InfoLabel then 
         self.InfoLabel.Text = "" 
     end
     
-    -- Load tab ใหม่
     local success, err = pcall(function()
         if tabName == "Players" and self.TabsModules.Players then
             local tab = self.TabsModules.Players.new({
@@ -315,7 +309,7 @@ function GUI:SwitchTab(tabName)
                 Utils = self.Utils,
                 Config = self.Config,
                 StatusLabel = self.StatusLabel,
-                InfoLabel = self.InfoLabel -- อย่าลืมบรรทัดนี้ ต้องส่ง InfoLabel ไปด้วย
+                InfoLabel = self.InfoLabel
             })
             tab:Init(self.ContentArea)
             self.ActiveTabInstance = tab
@@ -330,7 +324,21 @@ function GUI:SwitchTab(tabName)
                 Config = self.Config,
                 StatusLabel = self.StatusLabel,
                 ScreenGui = self.ScreenGui,
-                InfoLabel = self.InfoLabel -- อย่าลืมบรรทัดนี้ ต้องส่ง InfoLabel ไปด้วย
+                InfoLabel = self.InfoLabel
+            })
+            tab:Init(self.ContentArea)
+            self.ActiveTabInstance = tab
+        
+        -- ✅ เพิ่มส่วนนี้ทั้งหมด
+        elseif tabName == "AutoCrates" and self.TabsModules.AutoCrates then
+            local tab = self.TabsModules.AutoCrates.new({
+                UIFactory = self.UIFactory,
+                StateManager = self.StateManager,
+                InventoryManager = self.InventoryManager,
+                Utils = self.Utils,
+                Config = self.Config,
+                StatusLabel = self.StatusLabel,
+                InfoLabel = self.InfoLabel
             })
             tab:Init(self.ContentArea)
             self.ActiveTabInstance = tab
@@ -384,23 +392,19 @@ function GUI:StartMonitoring()
         local missingCounter = 0
         
         while self.ScreenGui and self.ScreenGui.Parent do
-            -- อัพเดทสถานะปุ่มในหน้า Players
             if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.UpdateButtonStates then
                 pcall(function() self.ActiveTabInstance:UpdateButtonStates() end)
             end
 
-            -- ตรวจสอบว่าหน้าต่างเทรดเปิดอยู่ไหม
             if self.Utils.IsTradeActive() then
                 missingCounter = 0
             else
                 missingCounter = missingCounter + 1
             end
             
-            -- ✅ FIX: เมื่อเทรดปิดจริง (เกินเวลาที่กำหนด)
             if missingCounter > CONFIG.TRADE_RESET_THRESHOLD then
                 self.TradeManager.IsProcessing = false
                 
-                -- ✅ ตรวจเช็ค: ถ้ามีของค้างในเทรด หรือเรายังอยู่หน้า Inventory ให้ทำการ Reset
                 if next(self.StateManager.itemsInTrade) ~= nil or self.StateManager.currentMainTab == "Inventory" then
                     
                     local wasInInventory = (self.StateManager.currentMainTab == "Inventory")
@@ -411,20 +415,15 @@ function GUI:StartMonitoring()
                         self.StateManager:SetStatus("🔄 Trade closed → Reset", THEME.TextGray, self.StatusLabel)
                     end
                     
-                    -- รีเฟรชหน้า Dupe (ถ้าเปิดค้างไว้)
                     if self.StateManager.currentMainTab == "Dupe" and self.ActiveTabInstance and self.ActiveTabInstance.RefreshInventory then
                         pcall(function() self.ActiveTabInstance:RefreshInventory() end)
                     end
 
-                    -- ✅ FIX CRITICAL: สลับกลับไปหน้า Players เฉพาะเมื่อ
-                    -- 1. เราอยู่หน้า Inventory
-                    -- 2. เทรดปิดจริงๆ (missingCounter เกิน threshold แล้ว)
                     if wasInInventory then
-                        task.wait(0.2) -- หน่วงเล็กน้อยเพื่อให้ UI update
+                        task.wait(0.2)
                         self:SwitchTab("Players")
                     end
                     
-                    -- รีเซ็ต counter หลัง reset
                     missingCounter = 0
                 end
             end
@@ -433,7 +432,6 @@ function GUI:StartMonitoring()
         end
     end)
     
-    -- รีเฟรชรายชื่อคนเมื่อเข้า/ออกเซิร์ฟ
     Players.PlayerAdded:Connect(function()
         if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.RefreshList then
             pcall(function() self.ActiveTabInstance:RefreshList() end)
