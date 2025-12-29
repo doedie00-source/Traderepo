@@ -29,6 +29,11 @@ function InventoryTab.new(deps)
     self.Config = deps.Config
     self.StatusLabel = deps.StatusLabel
     self.Container = nil
+    
+    -- ✅ เพิ่ม 2 บรรทัดนี้
+    self.isPopupOpen = false
+    self.currentPopup = nil
+    
     return self
 end
 
@@ -348,7 +353,7 @@ function InventoryTab:CreateItemCard(item, playerData)
                 }, oldAmount, self.StatusLabel, self.StateManager, self.Utils)
                 
             else
-                -- คลิกครั้งแรก → เปิด Popup
+                if self.isPopupOpen then return end
                 self:ShowQuantityPopup({Default = item.Amount, Max = item.Amount}, function(qty)
                     self.TradeManager.SendTradeSignal("Add", {
                         Name = item.Name,
@@ -359,7 +364,7 @@ function InventoryTab:CreateItemCard(item, playerData)
                     task.wait(0.1)
                     self:RefreshInventory()
                 end)
-                return -- ไม่ refresh ตอนเปิด popup
+                return
             end
             
         else
@@ -396,7 +401,19 @@ function InventoryTab:CreateItemCard(item, playerData)
 end
 
 function InventoryTab:ShowQuantityPopup(itemData, onConfirm)
+    -- ✅ ป้องกันเปิด popup ซ้ำ
+    if self.isPopupOpen then return end
+    
+    -- ✅ ปิด popup เก่า (ถ้ามี)
+    if self.currentPopup and self.currentPopup.Parent then
+        self.currentPopup:Destroy()
+        self.currentPopup = nil
+    end
+    
     local THEME = self.Config.THEME
+    
+    -- ✅ ตั้ง flag ว่า popup กำลังเปิด
+    self.isPopupOpen = true
     
     local PopupFrame = Instance.new("Frame", game:GetService("CoreGui"):FindFirstChild(self.Config.CONFIG.GUI_NAME))
     PopupFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -404,6 +421,7 @@ function InventoryTab:ShowQuantityPopup(itemData, onConfirm)
     PopupFrame.BackgroundTransparency = 0.3
     PopupFrame.ZIndex = 3000
     PopupFrame.BorderSizePixel = 0
+    self.currentPopup = PopupFrame
     
     local popupBox = Instance.new("Frame", PopupFrame)
     popupBox.Size = UDim2.new(0, 240, 0, 150)
@@ -448,6 +466,9 @@ function InventoryTab:ShowQuantityPopup(itemData, onConfirm)
         if PopupFrame and PopupFrame.Parent then
             PopupFrame:Destroy()
         end
+        -- ✅ เพิ่ม 2 บรรทัดนี้
+        self.isPopupOpen = false
+        self.currentPopup = nil
     end
     
     local confirmBtn = self.UIFactory.CreateButton({
