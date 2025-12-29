@@ -66,6 +66,13 @@ function InventoryTab:Init(parent)
         UseGrid = true 
     })
     
+    -- ✅ เพิ่ม Padding ให้ Container (เหมือนหน้า Dupe)
+    local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 12)
+    
     -- ตั้งค่า Grid ให้สวยเหมือนหน้า Dupe
     local layout = self.Container:FindFirstChild("UIGridLayout")
     if layout then
