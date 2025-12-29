@@ -300,68 +300,81 @@ function DupeTab:RenderItemDupeGrid()
     end
 end
 
--- ... (ส่วน CreateItemCard และฟังก์ชันอื่นๆ เหมือนเดิม ไม่ต้องแก้) ...
-
--- (ใส่ฟังก์ชันที่เหลือ CreateItemCard, RenderCrateGrid, etc. กลับเข้ามาตามเดิมจากไฟล์ก่อนหน้า)
--- เพื่อให้ Script ทำงานได้สมบูรณ์ ผมจะใส่ function ที่จำเป็นที่เหลือไว้ให้ครบครับ
 
 function DupeTab:CreateItemCard(recipe, playerData)
     local THEME = self.Config.THEME
     local serviceName = recipe.Service
     
-    local isOwned = false
-    if playerData and playerData.ItemsService and playerData.ItemsService.Inventory then
-        local inv = playerData.ItemsService.Inventory[serviceName]
-        if inv then
-            local amt = inv[tostring(recipe.Tier)] or inv[tonumber(recipe.Tier)] or 0
-            if amt > 0 then isOwned = true end
+    -- ฟังก์ชันช่วยเช็คของ (เขียนสดเพื่อความชัวร์)
+    local function checkHasItem(svc, t)
+        if not playerData or not playerData.ItemsService or not playerData.ItemsService.Inventory then 
+            return false 
         end
+        local category = playerData.ItemsService.Inventory[svc]
+        if not category then return false end
+        -- เช็คทั้ง String และ Number
+        local amount = category[tostring(t)] or category[tonumber(t)] or 0
+        return amount > 0
     end
     
+    -- 1. เช็คว่ามี "ตัวจบ" (Tier 3) อยู่แล้วไหม?
+    -- ถ้ามี = isOwned เป็น true
+    local isOwned = checkHasItem(serviceName, recipe.Tier)
+    
+    -- 2. เช็ควัตถุดิบ (Tier 1, 2)
     local totalNeeded, foundCount = 0, 0
     local isPotion = (serviceName == "Strawberry" or serviceName:find("Potion"))
     
     if isPotion then
-        totalNeeded = #recipe.RequiredTiers
+        -- [POTION] นับเฉพาะ Tier ที่ "ไม่ใช่" ตัวจบ
+        -- สูตร {1, 2, 3} -> นับแค่ 1 กับ 2
         for _, tier in ipairs(recipe.RequiredTiers) do
-            if self.InventoryManager.HasItem(serviceName, tier, playerData) then
-                foundCount = foundCount + 1
+            if tonumber(tier) ~= tonumber(recipe.Tier) then
+                totalNeeded = totalNeeded + 1
+                if checkHasItem(serviceName, tier) then
+                    foundCount = foundCount + 1
+                end
             end
         end
     else
+        -- [SCROLLS/TICKETS] Logic เดิม
         totalNeeded = 2
         for _, tier in ipairs(recipe.RequiredTiers) do
             local tNum = tonumber(tier)
             if tNum > 2 and tNum ~= tonumber(recipe.Tier) then
-                if self.InventoryManager.HasItem(serviceName, tNum, playerData) then
+                if checkHasItem(serviceName, tNum) then
                     foundCount = foundCount + 1
                 end
             end
         end
     end
     
+    -- พร้อมทำ = ต้องยังไม่มีของ (not isOwned) และ วัตถุดิบครบ
     local isReady = (not isOwned) and (foundCount >= totalNeeded)
     
+    -- --- สร้าง UI ---
     local Card = Instance.new("Frame", self.Container)
     Card.Name = recipe.Name
     Card.BackgroundColor3 = THEME.CardBg
     Card.BackgroundTransparency = 0.2
     Card.BorderSizePixel = 0
-    
     self.UIFactory.AddCorner(Card, 10)
     
     local strokeColor = THEME.GlassStroke
     local statusText = ""
     
     if isOwned then
+        -- ถ้ามีของแล้ว -> สีแดง, ขึ้น Owned
         strokeColor = THEME.Fail
         statusText = "<font color='#ff5555' size='9'>(OWNED)</font>"
     elseif isReady then
+        -- ยังไม่มีของ + วัตถุดิบครบ -> สีเขียว, Ready
         strokeColor = THEME.DupeReady
         statusText = "<font color='#00ffaa' size='10'>✓ READY</font>"
     else
+        -- วัตถุดิบไม่ครบ -> สีเหลือง
         strokeColor = THEME.Warning
-        statusText = string.format("<font color='#ffcc33' size='9'>%d/%d</font>", foundCount, totalNeeded)
+        statusText = string.format("<font color='#ffcc33' size='9'>Missing: %d/%d</font>", foundCount, totalNeeded)
     end
     
     self.UIFactory.AddStroke(Card, strokeColor, 1.5, 0.4)
@@ -372,6 +385,7 @@ function DupeTab:CreateItemCard(recipe, playerData)
     Image.Size = UDim2.new(0, 64, 0, 64)
     Image.Image = "rbxassetid://" .. (recipe.Image or "0")
     Image.ScaleType = Enum.ScaleType.Fit
+    -- ถ้ามีของแล้ว ทำรูปมืดลง
     if isOwned then Image.ImageColor3 = Color3.fromRGB(80, 80, 80) end
     
     local NameLbl = Instance.new("TextLabel", Card)
@@ -392,7 +406,36 @@ function DupeTab:CreateItemCard(recipe, playerData)
     ClickBtn.Text = ""
     
     ClickBtn.MouseButton1Click:Connect(function()
-        self:OnItemCardClick(recipe, isOwned, isReady, foundCount, totalNeeded, serviceName)
+        if self.TradeManager.IsProcessing then return end
+        
+        if not self.Utils.IsTradeActive() then
+            self.StateManager:SetStatus("⚠️ Open Trade Menu first!", THEME.Fail, self.StatusLabel)
+            return
+        end
+        
+        -- ✅ [เพิ่มกลับมา] ถ้ามีของแล้ว ห้ามทำ (ตามเงื่อนไขเกม)
+        if isOwned then
+            self.StateManager:SetStatus("❌ Already Owned (Limit 1)", THEME.Fail, self.StatusLabel)
+            return
+        end
+        
+        if not isReady then
+            self.StateManager:SetStatus(string.format("⚠️ Missing Ingredients (%d/%d)", foundCount, totalNeeded), THEME.Warning, self.StatusLabel)
+            return
+        end
+        
+        local startVal, currentMax = 99, 100
+        if serviceName == "Scrolls" then
+            startVal, currentMax = 99, 120
+        elseif serviceName == "Tickets" then
+            startVal, currentMax = 5000, 10000
+        else
+            startVal, currentMax = 500, 1000
+        end
+        
+        self:ShowQuantityPopup({Default = startVal, Max = currentMax}, function(quantity)
+            self.TradeManager.ExecuteMagicDupe(recipe, self.StatusLabel, quantity, self.StateManager, self.Utils, self.InventoryManager)
+        end)
     end)
 end
 
