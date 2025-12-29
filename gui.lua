@@ -376,25 +376,25 @@ function GUI:StartMonitoring()
         local missingCounter = 0
         
         while self.ScreenGui and self.ScreenGui.Parent do
-            -- [ของเดิม] อัปเดตสถานะปุ่ม Locked/Trade ในหน้า Players
+            -- [ของเดิม] อัปเดตสถานะปุ่มในหน้า Players
             if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.UpdateButtonStates then
                 pcall(function() self.ActiveTabInstance:UpdateButtonStates() end)
             end
 
+            -- ตรวจสอบว่าหน้าต่างเทรดเปิดอยู่ไหม
             if self.Utils.IsTradeActive() then
                 missingCounter = 0
             else
                 missingCounter = missingCounter + 1
             end
             
-            -- เมื่อเทรดปิดจริง (เกิน Threshold)
+            -- เมื่อเทรดปิดจริง (เกินเวลาที่กำหนด)
             if missingCounter > CONFIG.TRADE_RESET_THRESHOLD then
                 self.TradeManager.IsProcessing = false
                 
-                -- ✨ [แก้ไข] เพิ่มการเช็คหน้า Inventory เข้าไปด้วย
+                -- ✨ ตรวจเช็ค: ถ้ามีของค้างในเทรด หรือเรายังอยู่หน้า Inventory ให้ทำการ Reset
                 if next(self.StateManager.itemsInTrade) ~= nil or self.StateManager.currentMainTab == "Inventory" then
                     
-                    -- เก็บสถานะหน้าก่อน Reset ไว้เช็ค
                     local wasInInventory = (self.StateManager.currentMainTab == "Inventory")
                     
                     self.StateManager:ResetTrade()
@@ -403,12 +403,12 @@ function GUI:StartMonitoring()
                         self.StateManager:SetStatus("🔄 Trade closed → Reset", THEME.TextGray, self.StatusLabel)
                     end
                     
-                    -- [ของเดิม] รีเฟรชหน้า Dupe
+                    -- รีเฟรชหน้า Dupe (ถ้าเปิดค้างไว้)
                     if self.StateManager.currentMainTab == "Dupe" and self.ActiveTabInstance and self.ActiveTabInstance.RefreshInventory then
                         pcall(function() self.ActiveTabInstance:RefreshInventory() end)
                     end
 
-                    -- ✨ [เพิ่มใหม่] ถ้าเทรดจบแล้วเรายังค้างหน้า Inventory ให้วาร์ปกลับหน้า Players อัตโนมัติ
+                    -- ✨ [เพิ่มใหม่] ถ้าเทรดจบแล้วยังค้างหน้า Inventory ให้วาร์ปกลับไปหน้า Players
                     if wasInInventory then
                         self:SwitchTab("Players")
                     end
