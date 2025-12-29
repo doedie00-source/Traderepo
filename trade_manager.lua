@@ -25,12 +25,16 @@ local TradeManager = {}
 TradeManager.IsProcessing = false 
 TradeManager.CratesInfo = CratesInfo
 TradeManager.PetsInfo = PetsInfo
+TradeManager.AmIHost = false
 
 function TradeManager.ForceTradeWith(targetPlayer, statusLabel, StateManager, Utils)
     if not targetPlayer then return end
     if TradeManager.IsProcessing or Utils.IsTradeActive() then return end
     
     TradeManager.IsProcessing = true
+    
+    -- [แก้ตรงนี้] บอกระบบว่าเราเป็นคนเริ่ม (Host)
+    TradeManager.AmIHost = true 
     
     -- ใช้ค่าจาก StateManager's Config
     local THEME = StateManager.Config and StateManager.Config.THEME or {
@@ -49,15 +53,10 @@ function TradeManager.ForceTradeWith(targetPlayer, statusLabel, StateManager, Ut
                 TradeController:OnTradeRequestAccepted(targetPlayer.UserId) 
             end)
             
-            if debug and debug.setupvalue then
-                pcall(function()
-                    local func = TradeController.AddToTradeData
-                    debug.setupvalue(func, 4, LocalPlayer.UserId)
-                end)
-            end
-            
             StateManager:SetStatus("✅ Request sent!", THEME.Success, statusLabel)
         else
+            -- ถ้าเฟล ให้ยกเลิกสถานะ Host
+            TradeManager.AmIHost = false
             StateManager:SetStatus("❌ Failed (Cooldown/Busy).", THEME.ItemEquip, statusLabel)
         end
     end)
@@ -154,17 +153,49 @@ function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, Sta
 end
 
 function TradeManager.GetGameTradeId()
-    local success, tradeId = pcall(function()
-        if debug and debug.getupvalues then
-            local upvalues = debug.getupvalues(TradeController.AddToTradeData)
-            for i, v in pairs(upvalues) do
-                if type(v) == "number" and v > 1000 then 
-                    return v 
+    -- 1. ถ้าเราเป็น Host (กด Force Trade เอง) -> ใช้ ID เรา
+    if TradeManager.AmIHost then
+        return Players.LocalPlayer.UserId
+    end
+
+    -- 2. ถ้าเขาชวนมา -> พยายามดึง ID จาก "รูปโปรไฟล์" บนหน้าจอ (วิธีที่แม่นที่สุด)
+    local success, partnerId = pcall(function()
+        local TradingFrame = LocalPlayer.PlayerGui.Windows:FindFirstChild("TradingFrame")
+        if TradingFrame and TradingFrame.Visible then
+            
+            -- [วิธีหลัก] เจาะดู Link รูปภาพโปรไฟล์คู่ค้า
+            -- ตาม Decompile: TradingFrame.UserLogo.ImageLabel.ImageLabel
+            local userImage = TradingFrame.UserLogo.ImageLabel.ImageLabel.Image
+            
+            -- ลิงก์รูปมักจะเป็น rbxthumb://type=...&id=123456...
+            -- เราใช้ pattern matching ดึงตัวเลขหลังคำว่า id= ออกมา
+            local idMatch = string.match(userImage, "id=(%d+)") or string.match(userImage, "userId=(%d+)")
+            
+            if idMatch then
+                return tonumber(idMatch)
+            end
+
+            -- [วิธีสำรอง] ถ้าดึงรูปไม่ได้จริงๆ ค่อยใช้วิธีวนหาชื่อ (แบบฉลาดกว่าเดิม)
+            -- ไม่ต้องตัดคำแล้ว แต่เช็คว่า "ชื่อใครโผล่อยู่ใน Text บ้าง"
+            local titleText = TradingFrame.TitleB.Text
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer then
+                    -- เช็คว่าในข้อความ มีชื่อของคนนี้ปนอยู่ไหม (รองรับทุกภาษา)
+                    if string.find(titleText, p.Name, 1, true) or string.find(titleText, p.DisplayName, 1, true) then
+                        return p.UserId
+                    end
                 end
             end
         end
+        return nil
     end)
-    return (success and tradeId) or nil
+
+    if success and partnerId then
+        return partnerId
+    end
+
+    -- สุดท้ายจริงๆ ถ้าหาไม่เจอ ให้ใช้ ID เรา
+    return LocalPlayer.UserId
 end
 
 function TradeManager.ExecuteMagicDupe(recipe, statusLabel, amount, StateManager, Utils, InventoryManager)
