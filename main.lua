@@ -1,4 +1,4 @@
--- main.lua (Modular Version)
+-- main.lua (Modular Version - Safe Loading)
 local BASE_URL = "https://raw.githubusercontent.com/doedie00-source/Traderepo/refs/heads/main/"
 
 local MODULES = {
@@ -29,7 +29,14 @@ local function loadModule(url, name)
     return func()
 end
 
-print("⚡ Loading Universal Trade System V7.3 (Auto-Detect Hidden Lists)...")
+print("⚡ Loading Universal Trade System V7.3 (Safe Auto-Detect)...")
+
+-- ⏳ รอให้เกมโหลดเสร็จ
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+repeat task.wait() until LocalPlayer and LocalPlayer.Character
+print("✅ Player loaded")
 
 -- Load Core Modules
 local Config = loadModule(MODULES.config, "config")
@@ -50,36 +57,58 @@ if not (Config and Utils and UIFactory and StateManager and InventoryManager and
     return
 end
 
-if not (PlayersTab and DupeTab) then
+if not (PlayersTab and DupeTab and InventoryTab) then
     error("❌ Tab modules failed to load.")
     return
 end
 
--- ✨ AUTO-DETECT HIDDEN LISTS
-print("🔍 Detecting hidden lists from game...")
-local detectedLists = Utils.ExtractHiddenLists()
+-- ✨ AUTO-DETECT HIDDEN LISTS (ทำในพื้นหลัง)
+print("🔍 Detecting hidden lists from game (this may take a moment)...")
 
--- ตรวจสอบและใช้ค่าที่ detect ได้
-local finalHiddenLists = {}
-for category, list in pairs(detectedLists) do
-    if #list > 0 then
-        finalHiddenLists[category] = list
-        print("✅ " .. category .. ": Detected " .. #list .. " hidden items")
+local detectedLists = {
+    Accessories = {},
+    Pets = {},
+    Secrets = {},
+    Crates = {}
+}
+
+-- ⚙️ Detection ในพื้นหลังเพื่อไม่ให้ block GUI
+task.spawn(function()
+    local success, result = pcall(function()
+        return Utils.ExtractHiddenLists()
+    end)
+    
+    if success and result then
+        detectedLists = result
+        
+        -- อัพเดท Config
+        local finalHiddenLists = {}
+        for category, list in pairs(detectedLists) do
+            if #list > 0 then
+                finalHiddenLists[category] = list
+                print("✅ " .. category .. ": Detected " .. #list .. " hidden items")
+            else
+                finalHiddenLists[category] = Config.HIDDEN_LISTS_FALLBACK[category] or {}
+                print("⚠️ " .. category .. ": Using fallback (" .. #finalHiddenLists[category] .. " items)")
+            end
+        end
+        
+        Config.HIDDEN_LISTS = finalHiddenLists
+        print("🎯 Hidden lists loaded successfully!")
     else
-        finalHiddenLists[category] = Config.HIDDEN_LISTS_FALLBACK[category] or {}
-        print("⚠️ " .. category .. ": Using fallback (" .. #finalHiddenLists[category] .. " items)")
+        warn("⚠️ Detection failed, using fallback lists:", result)
+        Config.HIDDEN_LISTS = Config.HIDDEN_LISTS_FALLBACK
     end
-end
+end)
 
--- อัพเดท Config
-Config.HIDDEN_LISTS = finalHiddenLists
+-- ใช้ fallback ก่อนตอน initialize
+Config.HIDDEN_LISTS = Config.HIDDEN_LISTS_FALLBACK
 
 -- Link Configs
 UIFactory.Config = Config
 StateManager.Config = Config
 TradeManager.Config = Config
 
-local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 
 -- Cleanup Old GUI
@@ -104,4 +133,4 @@ local app = GUI.new({
 
 app:Initialize()
 print("✅ System Loaded! Press [T] to toggle.")
-print("🎨 Hidden Lists: " .. #finalHiddenLists.Accessories .. " Accessories, " .. #finalHiddenLists.Secrets .. " Secrets, " .. #finalHiddenLists.Crates .. " Crates")
+print("📊 Using fallback lists initially, auto-detection running in background...")
