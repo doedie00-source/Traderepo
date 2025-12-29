@@ -274,6 +274,15 @@ end
 function GUI:SwitchTab(tabName)
     local THEME = self.Config.THEME
     
+    -- ✅ FIX: ถ้าเทรดเปิดอยู่ และพยายามไปหน้า Players → บังคับไป Inventory แทน
+    if tabName == "Players" and self.Utils.IsTradeActive() then
+        tabName = "Inventory"
+        if self.StatusLabel then
+            self.StatusLabel.Text = "🔒 Trade active → Redirected to Inventory"
+            self.StatusLabel.TextColor3 = THEME.Warning
+        end
+    end
+    
     self.StateManager.currentMainTab = tabName
     
     -- Animation ปุ่มเมนูซ้าย (คงเดิม)
@@ -292,7 +301,7 @@ function GUI:SwitchTab(tabName)
     end
     self.ActiveTabInstance = nil
 
-    -- ✨ [แก้ไขตรงนี้] สั่งล้าง InfoLabel (ทางขวา) ทิ้งเสมอเมื่อเปลี่ยนหน้าเมนูหลัก
+    -- ล้าง InfoLabel
     if self.InfoLabel then 
         self.InfoLabel.Text = "" 
     end
