@@ -29,7 +29,7 @@ local function loadModule(url, name)
     return func()
 end
 
-print("⚡ Loading Universal Trade System V7.2 (Modular)...")
+print("⚡ Loading Universal Trade System V7.3 (Auto-Detect Hidden Lists)...")
 
 -- Load Core Modules
 local Config = loadModule(MODULES.config, "config")
@@ -54,6 +54,25 @@ if not (PlayersTab and DupeTab) then
     error("❌ Tab modules failed to load.")
     return
 end
+
+-- ✨ AUTO-DETECT HIDDEN LISTS
+print("🔍 Detecting hidden lists from game...")
+local detectedLists = Utils.ExtractHiddenLists()
+
+-- ตรวจสอบและใช้ค่าที่ detect ได้
+local finalHiddenLists = {}
+for category, list in pairs(detectedLists) do
+    if #list > 0 then
+        finalHiddenLists[category] = list
+        print("✅ " .. category .. ": Detected " .. #list .. " hidden items")
+    else
+        finalHiddenLists[category] = Config.HIDDEN_LISTS_FALLBACK[category] or {}
+        print("⚠️ " .. category .. ": Using fallback (" .. #finalHiddenLists[category] .. " items)")
+    end
+end
+
+-- อัพเดท Config
+Config.HIDDEN_LISTS = finalHiddenLists
 
 -- Link Configs
 UIFactory.Config = Config
@@ -85,4 +104,4 @@ local app = GUI.new({
 
 app:Initialize()
 print("✅ System Loaded! Press [T] to toggle.")
-print("🎨 New Modern UI with Modular Architecture")
+print("🎨 Hidden Lists: " .. #finalHiddenLists.Accessories .. " Accessories, " .. #finalHiddenLists.Secrets .. " Secrets, " .. #finalHiddenLists.Crates .. " Crates")
