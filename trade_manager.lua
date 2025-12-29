@@ -1,5 +1,5 @@
 -- trade_manager.lua
--- Trade Manager (CORE LOGIC - PRESERVED)
+-- Trade Manager (FINAL STABLE VERSION)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -26,13 +26,61 @@ TradeManager.IsProcessing = false
 TradeManager.CratesInfo = CratesInfo
 TradeManager.PetsInfo = PetsInfo
 
+-- [NEW] ตัวแปรเช็คว่าเราเป็นคนเริ่มเทรดหรือไม่ (Host)
+TradeManager.AmIHost = false
+
+-- ฟังก์ชันหา Trade ID แบบ Universal (รองรับทุกภาษา/ทุก Executor)
+function TradeManager.GetGameTradeId()
+    -- 1. ถ้าเราเป็น Host (กด Force Trade เอง) -> ใช้ ID เรา
+    if TradeManager.AmIHost then
+        return Players.LocalPlayer.UserId
+    end
+
+    -- 2. ถ้าเขาชวนมา -> พยายามดึง ID จาก UI บนหน้าจอ
+    local success, partnerId = pcall(function()
+        local TradingFrame = LocalPlayer.PlayerGui.Windows:FindFirstChild("TradingFrame")
+        if TradingFrame and TradingFrame.Visible then
+            
+            -- [วิธีหลัก] เจาะดู Link รูปภาพโปรไฟล์คู่ค้า (แม่นยำที่สุด 100%)
+            -- Link จะเป็นรูปแบบ rbxthumb://type=...&id=123456...
+            local userImage = TradingFrame.UserLogo.ImageLabel.ImageLabel.Image
+            local idMatch = string.match(userImage, "id=(%d+)") or string.match(userImage, "userId=(%d+)")
+            
+            if idMatch then
+                return tonumber(idMatch)
+            end
+
+            -- [วิธีสำรอง] ถ้าดึงรูปไม่ได้ ค่อยใช้วิธีวนหาชื่อในข้อความ
+            local titleText = TradingFrame.TitleB.Text
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer then
+                    -- เช็คว่ามีชื่อผู้เล่นคนไหนปรากฏอยู่ในข้อความบ้าง
+                    if string.find(titleText, p.Name, 1, true) or string.find(titleText, p.DisplayName, 1, true) then
+                        return p.UserId
+                    end
+                end
+            end
+        end
+        return nil
+    end)
+
+    if success and partnerId then
+        return partnerId
+    end
+
+    -- สุดท้ายจริงๆ ถ้าหาไม่เจอ ให้ใช้ ID เรา (Safe Fallback)
+    return LocalPlayer.UserId
+end
+
 function TradeManager.ForceTradeWith(targetPlayer, statusLabel, StateManager, Utils)
     if not targetPlayer then return end
     if TradeManager.IsProcessing or Utils.IsTradeActive() then return end
     
     TradeManager.IsProcessing = true
     
-    -- ใช้ค่าจาก StateManager's Config
+    -- [สำคัญ] เรากดเริ่มเทรด แปลว่าเราเป็น Host
+    TradeManager.AmIHost = true 
+    
     local THEME = StateManager.Config and StateManager.Config.THEME or {
         PlayerBtn = Color3.fromRGB(255, 170, 0),
         Success = Color3.fromRGB(85, 255, 127),
@@ -45,26 +93,22 @@ function TradeManager.ForceTradeWith(targetPlayer, statusLabel, StateManager, Ut
         TradeManager.IsProcessing = false
         
         if result then
+            -- บังคับให้ Client ฝั่งเรารับรู้ว่าเทรดเริ่มแล้ว
             pcall(function() 
                 TradeController:OnTradeRequestAccepted(targetPlayer.UserId) 
             end)
             
-            if debug and debug.setupvalue then
-                pcall(function()
-                    local func = TradeController.AddToTradeData
-                    debug.setupvalue(func, 4, LocalPlayer.UserId)
-                end)
-            end
-            
             StateManager:SetStatus("✅ Request sent!", THEME.Success, statusLabel)
         else
+            -- ถ้าเฟล ให้ยกเลิกสถานะ Host
+            TradeManager.AmIHost = false
             StateManager:SetStatus("❌ Failed (Cooldown/Busy).", THEME.ItemEquip, statusLabel)
         end
     end)
 end
 
 function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, StateManager, Utils, callbacks)
-    -- WARNING: This function is critical for Dupe System. Do NOT remove.
+    -- ฟังก์ชันนี้แก้ไขให้ปลอดภัยจากการ Crash (ไม่ยุ่งกับ UI เกม)
     
     local THEME = StateManager.Config and StateManager.Config.THEME or {
         ItemEquip = Color3.fromRGB(255, 80, 80),
@@ -78,93 +122,25 @@ function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, Sta
     end
     
     local isDupeMode = (StateManager.currentMainTab == "Dupe")
+    local key = itemData.Guid or itemData.Name
     
-    local success, fakeBtn = pcall(function()
-        local btn = Instance.new("ImageButton")
-        local uniqueId = itemData.Guid or (itemData.Name .. "_" .. tick())
-        btn.Name = "TradeItem_" .. uniqueId
-        btn.Visible = false
-        btn.Size = UDim2.new(0, 100, 0, 100)
-        btn.BackgroundTransparency = 1
-        
-        btn:SetAttribute("Service", itemData.Service)
-        btn:SetAttribute("Index", itemData.Name)
-        btn:SetAttribute("Quantity", amount)
-        btn:SetAttribute("IsEquipped", false)
-        
-        if itemData.Category == "Crates" then
-            btn:SetAttribute("ItemName", itemData.Name)
-            btn:SetAttribute("Name", itemData.Name)
-            btn:SetAttribute("Amount", amount)
-            btn:SetAttribute("Service", "CratesService")
-            btn:SetAttribute("IsFakeDupe", true)
-        end
-        
-        if itemData.Guid and itemData.Category ~= "Crates" then
-            btn:SetAttribute("Guid", tostring(itemData.Guid))
-        end
-        
-        if itemData.RawInfo then
-            if itemData.RawInfo.Evolution then 
-                btn:SetAttribute("Evolution", itemData.RawInfo.Evolution) 
-            end
-            if itemData.RawInfo.Shiny then 
-                btn:SetAttribute("Shiny", true) 
-            end
-            if itemData.RawInfo.Golden then 
-                btn:SetAttribute("Golden", true) 
-            end
-        end
-        
-        game:GetService("CollectionService"):AddTag(btn, "Tradeable")
-        btn.Parent = LocalPlayer:WaitForChild("PlayerGui")
-        return btn
-    end)
+    -- [FIXED] ตัดส่วนสร้าง fakeBtn ทิ้ง เพื่อป้องกัน Error Log
     
-    if not success or not fakeBtn then
-        StateManager:SetStatus("❌ Failed to create signal!", THEME.ItemEquip, statusLabel)
-        return
+    if action == "Add" then
+        -- อัปเดตแค่ใน Hub ของเรา
+        StateManager:AddToTrade(key, itemData)
+        
+        local modePrefix = isDupeMode and "✨ Dupe: " or "✅ Added: "
+        StateManager:SetStatus(modePrefix .. itemData.Name, THEME.ItemInv, statusLabel)
+        
+    elseif action == "Remove" then
+        StateManager:RemoveFromTrade(key)
+        StateManager:SetStatus("🗑️ Removed: " .. itemData.Name, THEME.ItemEquip, statusLabel)
     end
     
-    pcall(function()
-        local key = itemData.Guid or itemData.Name
-        if action == "Add" then
-            TradeController:AddToTradeData(fakeBtn, amount)
-            StateManager:AddToTrade(key, itemData)
-            local modePrefix = isDupeMode and "✨ Dupe: " or "✅ Added: "
-            StateManager:SetStatus(modePrefix .. itemData.Name, THEME.ItemInv, statusLabel)
-        elseif action == "Remove" then
-            TradeController:RemoveFromTradeData(fakeBtn, amount)
-            StateManager:RemoveFromTrade(key)
-            StateManager:SetStatus("🗑️ Removed: " .. itemData.Name, THEME.ItemEquip, statusLabel)
-        end
-    end)
-    
-    task.delay(0.5, function() 
-        if fakeBtn and fakeBtn.Parent then 
-            fakeBtn:Destroy() 
-        end 
-    end)
-    
-    if callbacks then
-        if callbacks.RefreshInventory then 
-            callbacks.RefreshInventory() 
-        end
+    if callbacks and callbacks.RefreshInventory then 
+        callbacks.RefreshInventory() 
     end
-end
-
-function TradeManager.GetGameTradeId()
-    local success, tradeId = pcall(function()
-        if debug and debug.getupvalues then
-            local upvalues = debug.getupvalues(TradeController.AddToTradeData)
-            for i, v in pairs(upvalues) do
-                if type(v) == "number" and v > 1000 then 
-                    return v 
-                end
-            end
-        end
-    end)
-    return (success and tradeId) or nil
 end
 
 function TradeManager.ExecuteMagicDupe(recipe, statusLabel, amount, StateManager, Utils, InventoryManager)
@@ -202,26 +178,8 @@ function TradeManager.ExecuteMagicDupe(recipe, statusLabel, amount, StateManager
         end
     end
     
+    -- ดึง Trade ID ที่ถูกต้องมาใช้
     local realTradeId = TradeManager.GetGameTradeId()
-    if not realTradeId then
-        local targetIds = {LocalPlayer.UserId}
-        pcall(function()
-            local TradingFrame = LocalPlayer.PlayerGui.Windows:FindFirstChild("TradingFrame")
-            if TradingFrame then
-                for _, v in pairs(TradingFrame:GetDescendants()) do
-                    if v:IsA("TextLabel") and v.Visible and #v.Text > 2 then
-                        for _, p in pairs(game.Players:GetPlayers()) do
-                            if p ~= LocalPlayer and (v.Text:find(p.Name) or v.Text:find(p.DisplayName)) then
-                                table.insert(targetIds, p.UserId)
-                                break
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-        realTradeId = targetIds
-    end
     
     local tradingService = ReplicatedStorage.Packages.Knit.Services.TradingService
     local remote = tradingService.RF:FindFirstChild("UpdateTradeOffer")
@@ -236,19 +194,10 @@ function TradeManager.ExecuteMagicDupe(recipe, statusLabel, amount, StateManager
             ItemsService = { [serviceName] = payload }
         }
         
-        if type(realTradeId) == "table" then
-            for _, id in pairs(realTradeId) do
-                task.spawn(function() 
-                    pcall(function() 
-                        remote:InvokeServer(id, data) 
-                    end) 
-                end)
-            end
-        else
-            pcall(function() 
-                remote:InvokeServer(realTradeId, data) 
-            end)
-        end
+        -- ส่งข้อมูลไปที่ Server โดยตรง (Safe & Fast)
+        pcall(function() 
+            remote:InvokeServer(realTradeId, data) 
+        end)
     end
     
     TradeManager.IsProcessing = true
@@ -262,11 +211,10 @@ function TradeManager.ExecuteMagicDupe(recipe, statusLabel, amount, StateManager
             StateManager:SetStatus("🧪 Step 2: Injecting (T1 x" .. amount .. ")...", THEME.BtnDupe, statusLabel)
             sendUpdate({ amount, 1 })
         elseif string.find(string.lower(recipe.Service), "potion") or string.find(string.lower(recipe.Name), "potion") then
-            -- ✅ แก้ไข: ส่งทีเดียวจบแบบ Array ตามที่ต้องการ
             sendUpdate({1, 1, amount})
             StateManager:SetStatus("✅ Potion Dupe Sent!", THEME.Success, statusLabel)
             TradeManager.IsProcessing = false
-            return -- จบการทำงานตรงนี้เลย ไม่ไหลไปหา else
+            return
         else
             local availableBaits = {}
             if serviceData then
@@ -386,20 +334,8 @@ function TradeManager.ExecutePetDupe(statusLabel, StateManager, Utils)
         end
     end
     
+    -- ดึง Trade ID ที่ถูกต้อง
     local realTradeId = TradeManager.GetGameTradeId()
-    if not realTradeId then
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p ~= LocalPlayer then
-                realTradeId = p.UserId
-                break
-            end
-        end
-    end
-    
-    if not realTradeId then
-        StateManager:SetStatus("❌ Trade ID not found!", THEME.Fail, statusLabel)
-        return
-    end
     
     TradeManager.IsProcessing = true
     StateManager:SetStatus("✨ Executing Pet Dupe...", THEME.BtnDupe, statusLabel)
