@@ -330,6 +330,9 @@ function InventoryTab:CreateItemCard(item, playerData)
     btn.Text = ""
     
     btn.MouseButton1Click:Connect(function()
+        -- ✅ ป้องกันคลิกซ้ำขณะ popup เปิดอยู่ (บรรทัดแรกสุด!)
+        if self.isPopupOpen then return end
+        
         if not self.Utils.IsTradeActive() then 
             self.StateManager:SetStatus("⚠️ Trade Menu NOT open!", THEME.Fail, self.StatusLabel)
             return 
@@ -340,10 +343,8 @@ function InventoryTab:CreateItemCard(item, playerData)
             return
         end
         
-        -- ✅ FIX: Crates ใช้ Popup + Toggle
         if item.Category == "Crates" then
             if isInTrade then
-                -- คลิกครั้งที่ 2 → Remove ออก
                 local oldAmount = self.StateManager.itemsInTrade[key] and self.StateManager.itemsInTrade[key].Amount or item.Amount
                 
                 self.TradeManager.SendTradeSignal("Remove", {
@@ -353,7 +354,6 @@ function InventoryTab:CreateItemCard(item, playerData)
                 }, oldAmount, self.StatusLabel, self.StateManager, self.Utils)
                 
             else
-                if self.isPopupOpen then return end
                 self:ShowQuantityPopup({Default = item.Amount, Max = item.Amount}, function(qty)
                     self.TradeManager.SendTradeSignal("Add", {
                         Name = item.Name,
@@ -368,7 +368,7 @@ function InventoryTab:CreateItemCard(item, playerData)
             end
             
         else
-            -- สำหรับ Pets, Accessories, Secrets (Toggle ธรรมดา)
+            -- Pets, Accessories, Secrets
             if isInTrade then
                 local amount = 1
                 
