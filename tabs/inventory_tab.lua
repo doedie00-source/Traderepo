@@ -85,47 +85,63 @@ function InventoryTab:RefreshInventory()
     local playerData = self.InventoryManager.GetPlayerData()
     if not playerData then return end
 
-    local HIDDEN = self.Config.CONFIG.HIDDEN_LISTS -- ต้องมีใน config.lua
+    -- ✨ แก้จุดนี้: เรียกไปที่ self.Config.HIDDEN_LISTS โดยตรง
+    local HIDDEN = self.Config.HIDDEN_LISTS 
+    
+    -- ป้องกันถ้า HIDDEN ยังเป็น Nil ให้หยุดทำงานก่อนไม่ให้ Error
+    if not HIDDEN then 
+        warn("HIDDEN_LISTS not found in Config!")
+        return 
+    end
+
     local itemsToRender = {}
 
-    -- 1. เช็ค Pets
-    for uuid, data in pairs(playerData.PetsService.Pets or {}) do
-        if self:CheckHidden(data.Name, HIDDEN.Pets) then
-            table.insert(itemsToRender, {
-                Name = data.Name, UUID = uuid, Category = "Pets", Service = "PetsService", 
-                Raw = data, Image = PetsInfo[data.Name] and PetsInfo[data.Name].Image
-            })
+    -- 1. เช็ค Pets (ตรวจสอบว่ามี PetsService และตาราง Pets ก่อน)
+    if playerData.PetsService and playerData.PetsService.Pets then
+        for uuid, data in pairs(playerData.PetsService.Pets) do
+            if self:CheckHidden(data.Name, HIDDEN.Pets) then
+                table.insert(itemsToRender, {
+                    Name = data.Name, UUID = uuid, Category = "Pets", Service = "PetsService", 
+                    Raw = data, Image = PetsInfo[data.Name] and PetsInfo[data.Name].Image
+                })
+            end
         end
     end
 
-    -- 2. เช็ค Monsters (Secrets)
-    for uuid, data in pairs(playerData.MonsterService.SavedMonsters or {}) do
-        local mName = type(data) == "table" and data.Name or data
-        if self:CheckHidden(mName, HIDDEN.Secrets) then
-            table.insert(itemsToRender, {
-                Name = mName, UUID = uuid, Category = "Secrets", Service = "MonsterService", 
-                Raw = data, Image = MonsterInfo[mName] and MonsterInfo[mName].Image
-            })
+    -- 2. เช็ค Monsters/Secrets
+    if playerData.MonsterService and playerData.MonsterService.SavedMonsters then
+        for uuid, data in pairs(playerData.MonsterService.SavedMonsters) do
+            local mName = type(data) == "table" and data.Name or data
+            if self:CheckHidden(mName, HIDDEN.Secrets) then
+                table.insert(itemsToRender, {
+                    Name = mName, UUID = uuid, Category = "Secrets", Service = "MonsterService", 
+                    Raw = data, Image = MonsterInfo[mName] and MonsterInfo[mName].Image
+                })
+            end
         end
     end
 
     -- 3. เช็ค Accessories
-    for uuid, data in pairs(playerData.AccessoryService.Accessories or {}) do
-        if self:CheckHidden(data.Name, HIDDEN.Accessories) then
-            table.insert(itemsToRender, {
-                Name = data.Name, UUID = uuid, Category = "Accessories", Service = "AccessoryService", 
-                Raw = data, Image = AccessoryInfo[data.Name] and AccessoryInfo[data.Name].Image
-            })
+    if playerData.AccessoryService and playerData.AccessoryService.Accessories then
+        for uuid, data in pairs(playerData.AccessoryService.Accessories) do
+            if self:CheckHidden(data.Name, HIDDEN.Accessories) then
+                table.insert(itemsToRender, {
+                    Name = data.Name, UUID = uuid, Category = "Accessories", Service = "AccessoryService", 
+                    Raw = data, Image = AccessoryInfo[data.Name] and AccessoryInfo[data.Name].Image
+                })
+            end
         end
     end
 
     -- 4. เช็ค Crates
-    for name, amount in pairs(playerData.CratesService.Crates or {}) do
-        if amount > 0 and self:CheckHidden(name, HIDDEN.Crates) then
-            table.insert(itemsToRender, {
-                Name = name, Amount = amount, Category = "Crates", Service = "CratesService", 
-                Image = CratesInfo[name] and CratesInfo[name].Image
-            })
+    if playerData.CratesService and playerData.CratesService.Crates then
+        for name, amount in pairs(playerData.CratesService.Crates) do
+            if amount > 0 and self:CheckHidden(name, HIDDEN.Crates) then
+                table.insert(itemsToRender, {
+                    Name = name, Amount = amount, Category = "Crates", Service = "CratesService", 
+                    Image = CratesInfo[name] and CratesInfo[name].Image
+                })
+            end
         end
     end
 
