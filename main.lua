@@ -13,6 +13,7 @@ local MODULES = {
     players_tab = BASE_URL .. "tabs/players_tab.lua",
     dupe_tab = BASE_URL .. "tabs/dupe_tab.lua",
     inventory_tab = BASE_URL .. "tabs/inventory_tab.lua",
+    auto_crates_tab = BASE_URL .. "tabs/auto_crates_tab.lua", -- ✅ เพิ่มบรรทัดนี้
 }
 
 local function loadModule(url, name)
@@ -44,13 +45,14 @@ local GUI = loadModule(MODULES.gui, "gui")
 local PlayersTab = loadModule(MODULES.players_tab, "players_tab")
 local DupeTab = loadModule(MODULES.dupe_tab, "dupe_tab")
 local InventoryTab = loadModule(MODULES.inventory_tab, "inventory_tab")
+local AutoCratesTab = loadModule(MODULES.auto_crates_tab, "auto_crates_tab") -- ✅ เพิ่มบรรทัดนี้
 
 if not (Config and Utils and UIFactory and StateManager and InventoryManager and TradeManager and GUI) then
     error("❌ Critical module failed to load.")
     return
 end
 
-if not (PlayersTab and DupeTab) then
+if not (PlayersTab and DupeTab and AutoCratesTab) then -- ✅ เพิ่ม AutoCratesTab ในการเช็ค
     error("❌ Tab modules failed to load.")
     return
 end
@@ -79,7 +81,8 @@ local app = GUI.new({
     Tabs = {
         Players = PlayersTab,
         Dupe = DupeTab,
-        Inventory = InventoryTab
+        Inventory = InventoryTab,
+        AutoCrates = AutoCratesTab -- ✅ เพิ่มบรรทัดนี้
     }
 })
 
