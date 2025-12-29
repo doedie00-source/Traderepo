@@ -2,7 +2,7 @@
 -- Configuration & Constants (Modern Theme)
 
 local CONFIG = {
-    VERSION = "7.3 (Auto-Detect)",
+    VERSION = "7.2 (Modular)",
     GUI_NAME = "ModernTradeGUI",
     
     -- Window Settings
@@ -46,18 +46,18 @@ local THEME = {
     -- Buttons
     BtnDefault = Color3.fromRGB(45, 45, 55),
     BtnHover = Color3.fromRGB(55, 55, 65),
-    BtnSelected = Color3.fromRGB(88, 101, 242),
+    BtnSelected = Color3.fromRGB(88, 101, 242), -- Discord Purple
     BtnMainTab = Color3.fromRGB(35, 35, 42),
     BtnMainTabSelected = Color3.fromRGB(88, 101, 242),
-    BtnDupe = Color3.fromRGB(114, 137, 218),
-    BtnDisabled = Color3.fromRGB(35, 35, 40),
+    BtnDupe = Color3.fromRGB(114, 137, 218), -- Light Blue
+    BtnDisabled = Color3.fromRGB(35, 35, 40),  -- เข้มกว่าเดิม
     TextDisabled = Color3.fromRGB(90, 90, 95),
     
     -- Status Colors
-    Success = Color3.fromRGB(67, 181, 129),
-    Fail = Color3.fromRGB(240, 71, 71),
-    Warning = Color3.fromRGB(250, 166, 26),
-    Info = Color3.fromRGB(88, 101, 242),
+    Success = Color3.fromRGB(67, 181, 129), -- Green
+    Fail = Color3.fromRGB(240, 71, 71), -- Red
+    Warning = Color3.fromRGB(250, 166, 26), -- Yellow
+    Info = Color3.fromRGB(88, 101, 242), -- Purple
     
     -- Special
     ItemInv = Color3.fromRGB(67, 181, 129),
@@ -99,21 +99,15 @@ local DUPE_RECIPES = {
     Pets = {}
 }
 
--- ⚠️ FALLBACK: ใช้เมื่อ auto-detect ล้มเหลว
-local HIDDEN_LISTS_FALLBACK = {
-    Accessories = { "Ghost", "Pumpkin Head", "Tri Tooth", "Tri Foot", "Tri Eyes", "Tri Ton" },
-    Pets = { "I.N.D.E.X", "Spooksy", "Spooplet", "Lordfang", "Batkin", "Flame", "Mega Flame", "Turbo Flame", "Ultra Flame", "I2Pet", "Present" },
-    Secrets = { "Banananananananito Bandito", "Tung Tung Tung Tung Tung Tung Tung..", "Los Tralaleritos", "Los Karkerkirkursitos", "OMEGA Sahur", "Anpali Babel", "Skull Skull Skull Sahur", "Prestige Skull Skull Skull Sahur", "Shimpanzini Bananini Priestini", "Frappochino Assassino", "Prestige Frappochino Assassino", "I2PERFECTINI FOXININI", "67", "Santanzelli Trulala" },
-    Crates = { "i2Perfect Crate" }
+local HIDDEN_LISTS = {
+    Accessories = {"Ghost", "Pumpkin Head", "Tri Tooth", "Tri Foot", "Tri Eyes", "Tri Ton"},
+    Pets = {"I.N.D.E.X", "Spooksy", "Spooplet", "Lordfang", "Batkin", "Flame", "Mega Flame", "Turbo Flame", "Ultra Flame", "I2Pet", "Present", "Polar Bear"},
+    Crates = { "Spooky Crate", "i2Perfect Crate" }
 }
-
--- ✨ จะถูกแทนที่ด้วยค่าจริงใน main.lua
-local HIDDEN_LISTS = HIDDEN_LISTS_FALLBACK
 
 return {
     CONFIG = CONFIG,
     THEME = THEME,
     DUPE_RECIPES = DUPE_RECIPES,
-    HIDDEN_LISTS = HIDDEN_LISTS,
-    HIDDEN_LISTS_FALLBACK = HIDDEN_LISTS_FALLBACK
+    HIDDEN_LISTS = HIDDEN_LISTS
 }
