@@ -184,7 +184,7 @@ function GUI:CreateTitleBar()
     self.UIFactory.CreateButton({
         Size = UDim2.new(0, 30, 0, 30),
         Position = UDim2.new(1, -34, 0, 4),
-        Text = "✕",
+        Text = "X",
         BgColor = THEME.Fail,
         TextSize = 16,
         Font = Enum.Font.GothamBold,
