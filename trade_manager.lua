@@ -142,6 +142,10 @@ function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, Sta
         
         if action == "Add" then
             TradeController:AddToTradeData(fakeBtn, amount)
+            
+            -- ✅ เพิ่มบรรทัดนี้: เก็บ Amount เข้าไปใน itemData
+            itemData.Amount = amount
+            
             StateManager:AddToTrade(key, itemData)
             
             local modePrefix = isDupeMode and "✨ Dupe: " or "✅ Added: "
