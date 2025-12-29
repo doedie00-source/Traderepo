@@ -657,8 +657,7 @@ function DupeTab:RenderPetDupeGrid()
         ["Mega Flame"] = true,
         ["Turbo Flame"] = true,
         ["Ultra Flame"] = true,
-        ["I2Pet"] = true,
-        ["Pumpkin Pie"] = true
+        ["I2Pet"] = true
     }
     
     if not self.TooltipRef then
