@@ -159,7 +159,7 @@ function DupeTab:CreateFloatingButtons(parent)
     self.FloatingButtons.BtnAddAll1k = self.UIFactory.CreateButton({
         Size = UDim2.new(0, 130, 0, btnHeight),
         Position = UDim2.new(1, -138, 1, -36),
-        Text = "➕ ADD 1K ALL",
+        Text = "➕ ADD ALL",
         BgColor = THEME.AccentGreen,
         TextSize = 11,
         Font = Enum.Font.GothamBold,
@@ -467,7 +467,11 @@ function DupeTab:RenderCrateGrid()
     if self.AddAllConn then self.AddAllConn:Disconnect() end
     if self.FloatingButtons.BtnAddAll1k then
         self.AddAllConn = self.FloatingButtons.BtnAddAll1k.MouseButton1Click:Connect(function()
-            self:OnAddAllCrates(cratesList, inventoryCrates)
+            if self.isPopupOpen then return end
+            
+            self:ShowQuantityPopup({Default = 1000, Max = 1000}, function(qty)
+                self:OnAddAllCrates(cratesList, inventoryCrates, qty)
+            end)
         end)
     end
     
@@ -585,7 +589,7 @@ function DupeTab:OnCrateCardClick(crate, isOwnedInSystem)
     end
 end
 
-function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
+function DupeTab:OnAddAllCrates(cratesList, inventoryCrates, quantity)
     local THEME = self.Config.THEME
     
     if not self.Utils.IsTradeActive() then
@@ -597,7 +601,8 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
         self.FloatingButtons.BtnAddAll1k.Active = false
         self.FloatingButtons.BtnAddAll1k.Text = "ADDING..."
     end
-    self.StateManager:SetStatus("🚀 Adding missing crates (1,000)...", THEME.AccentBlue, self.StatusLabel)
+    self.StateManager:SetStatus("🚀 Adding missing crates (" .. quantity .. ")...", THEME.AccentBlue, self.StatusLabel)
+
     
     task.spawn(function()
         local addedCount = 0
@@ -610,13 +615,13 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
             
             if amountInInv == nil and not isAlreadySelected then
                 
-                self.StateManager.selectedCrates[crate.DisplayName] = 1000
+                self.StateManager.selectedCrates[crate.DisplayName] = quantity
 
                 self.TradeManager.SendTradeSignal("Add", {
                     Name = crate.DisplayName,
                     Service = "CratesService",
                     Category = "Crates"
-                }, 1000, self.StatusLabel, self.StateManager, self.Utils)
+                }, quantity, self.StatusLabel, self.StateManager, self.Utils)
                 
                 addedCount = addedCount + 1
                 
@@ -636,7 +641,7 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
         
         if self.FloatingButtons.BtnAddAll1k then
             self.FloatingButtons.BtnAddAll1k.Active = true
-            self.FloatingButtons.BtnAddAll1k.Text = "➕ ADD 1K ALL"
+            self.FloatingButtons.BtnAddAll1k.Text = "➕ ADD ALL"
         end
         
         self:RefreshInventory()
