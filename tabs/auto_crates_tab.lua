@@ -225,29 +225,17 @@ function AutoCratesTab:CreateCrateCard(crate)
         Font = Enum.Font.Code
     })
     
-    -- Image
+    -- Image (ใหญ่ขึ้น ตรงกลางการ์ด)
     local Image = Instance.new("ImageLabel", Card)
-    Image.Size = UDim2.new(0, 45, 0, 45)
-    Image.Position = UDim2.new(0.5, -22.5, 0, 22)
+    Image.Size = UDim2.new(0, 60, 0, 60)
+    Image.Position = UDim2.new(0.5, -30, 0.5, -35)
     Image.BackgroundTransparency = 1
     local imgId = tostring(crate.Image)
     if not imgId:find("rbxassetid://") then imgId = "rbxassetid://" .. imgId end
     Image.Image = imgId
     Image.ScaleType = Enum.ScaleType.Fit
     
-    -- Name
-    local NameLbl = self.UIFactory.CreateLabel({
-        Parent = Card,
-        Text = crate.Name,
-        Size = UDim2.new(1, -6, 0, 16),
-        Position = UDim2.new(0, 3, 0, 68),
-        TextColor = THEME.TextWhite,
-        TextSize = 8,
-        Font = Enum.Font.GothamBold
-    })
-    NameLbl.TextWrapped = true
-    
-    -- Input
+    -- Input (ไม่มีชื่อแล้ว)
     local InputContainer = Instance.new("Frame", Card)
     InputContainer.Size = UDim2.new(1, -10, 0, 18)
     InputContainer.Position = UDim2.new(0, 5, 1, -22)
