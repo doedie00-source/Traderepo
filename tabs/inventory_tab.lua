@@ -285,16 +285,38 @@ function InventoryTab:CreateItemCard(item, playerData)
     local levelText = (item.Raw and item.Raw.Level) and (" [Lv."..item.Raw.Level.."]") or ""
     local amountText = (item.Amount and item.Amount > 1) and (" x"..item.Amount) or ""
     
+    -- ✅ เพิ่มการแสดง Scroll และค่าโบนัส (สำหรับ Accessories)
+    local scrollText = ""
+    if item.Category == "Accessories" and item.Raw and item.Raw.Scroll then
+        local scrollName = item.Raw.Scroll.Name or "Unknown"
+        scrollText = "\n<font size='8' color='rgb(140,100,255)'>[" .. scrollName .. "]</font>"
+        
+        -- แสดงค่าโบนัสถ้ามี
+        if item.Raw.Scroll.Upgrades then
+            local bonuses = {}
+            for statName, value in pairs(item.Raw.Scroll.Upgrades) do
+                -- แปลง 0.35 → +35%
+                local percentage = math.floor(value * 100)
+                table.insert(bonuses, statName .. " +" .. percentage .. "%")
+            end
+            
+            if #bonuses > 0 then
+                scrollText = scrollText .. "\n<font size='7' color='rgb(100,200,150)'>" .. table.concat(bonuses, " | ") .. "</font>"
+            end
+        end
+    end
+    
     local nameLbl = self.UIFactory.CreateLabel({
         Parent = Card,
-        Text = item.Name .. levelText .. amountText,
-        Size = UDim2.new(1, -8, 0, 25),
-        Position = UDim2.new(0, 4, 1, -30),
+        Text = item.Name .. levelText .. amountText .. scrollText,
+        Size = UDim2.new(1, -8, 0, scrollText ~= "" and 40 or 25), -- เพิ่มความสูงถ้ามี Scroll
+        Position = UDim2.new(0, 4, 1, (scrollText ~= "" and -45 or -30)),
         TextSize = 9,
         Font = Enum.Font.GothamBold,
         TextColor = isInTrade and THEME.Success or THEME.TextWhite
     })
     nameLbl.TextWrapped = true
+    nameLbl.RichText = true
 
     -- ✅ FIX: ปุ่มส่ง (รองรับ toggle)
     local btn = Instance.new("TextButton", Card)
