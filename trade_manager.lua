@@ -64,8 +64,6 @@ function TradeManager.ForceTradeWith(targetPlayer, statusLabel, StateManager, Ut
 end
 
 function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, StateManager, Utils, callbacks)
-    -- WARNING: This function is critical for Dupe System. Do NOT remove.
-    
     local THEME = StateManager.Config and StateManager.Config.THEME or {
         ItemEquip = Color3.fromRGB(255, 80, 80),
         ItemInv = Color3.fromRGB(100, 255, 140),
@@ -92,6 +90,7 @@ function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, Sta
         btn:SetAttribute("Quantity", amount)
         btn:SetAttribute("IsEquipped", false)
         
+        -- ✅ FIX: รองรับ Crates
         if itemData.Category == "Crates" then
             btn:SetAttribute("ItemName", itemData.Name)
             btn:SetAttribute("Name", itemData.Name)
@@ -100,10 +99,22 @@ function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, Sta
             btn:SetAttribute("IsFakeDupe", true)
         end
         
-        if itemData.Guid and itemData.Category ~= "Crates" then
+        -- ✅ FIX: รองรับ Monster ที่ไม่มี UUID (MonstersUnlocked)
+        if itemData.Category == "Secrets" then
+            if itemData.ElementData then
+                btn:SetAttribute("ElementData", itemData.ElementData)
+            end
+            
+            -- ถ้ามี Guid (SavedMonsters) ให้ใส่
+            if itemData.Guid then
+                btn:SetAttribute("Guid", tostring(itemData.Guid))
+            end
+        elseif itemData.Guid and itemData.Category ~= "Crates" then
+            -- กรณีปกติ (Pets, Accessories)
             btn:SetAttribute("Guid", tostring(itemData.Guid))
         end
         
+        -- ใส่ข้อมูลเพิ่มเติม
         if itemData.RawInfo then
             if itemData.RawInfo.Evolution then 
                 btn:SetAttribute("Evolution", itemData.RawInfo.Evolution) 
@@ -128,11 +139,14 @@ function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, Sta
     
     pcall(function()
         local key = itemData.Guid or itemData.Name
+        
         if action == "Add" then
             TradeController:AddToTradeData(fakeBtn, amount)
             StateManager:AddToTrade(key, itemData)
+            
             local modePrefix = isDupeMode and "✨ Dupe: " or "✅ Added: "
             StateManager:SetStatus(modePrefix .. itemData.Name, THEME.ItemInv, statusLabel)
+            
         elseif action == "Remove" then
             TradeController:RemoveFromTradeData(fakeBtn, amount)
             StateManager:RemoveFromTrade(key)
