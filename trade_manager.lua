@@ -1,527 +1,528 @@
--- trade_manager.lua
--- Trade Manager (CORE LOGIC - PRESERVED)
+-- tabs/auto_crates_tab.lua
+-- Auto Open Crates Tab - Support 1-8 per batch
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 local Knit = require(ReplicatedStorage.Packages.Knit)
-local TradeController = Knit.GetController("TradeController")
-local TradingService = Knit.GetService("TradingService")
 local ReplicaListener = Knit.GetController("ReplicaListener")
 
--- Load Game Info
 local SuccessLoadCrates, CratesInfo = pcall(function() 
     return require(ReplicatedStorage.GameInfo.CratesInfo) 
 end)
 if not SuccessLoadCrates then CratesInfo = {} end
 
-local SuccessLoadPets, PetsInfo = pcall(function() 
-    return require(ReplicatedStorage.GameInfo.PetsInfo) 
-end)
-if not SuccessLoadPets then PetsInfo = {} end
+local AutoCratesTab = {}
+AutoCratesTab.__index = AutoCratesTab
 
-local TradeManager = {}
-TradeManager.IsProcessing = false 
-TradeManager.CratesInfo = CratesInfo
-TradeManager.PetsInfo = PetsInfo
-
-function TradeManager.ForceTradeWith(targetPlayer, statusLabel, StateManager, Utils)
-    if not targetPlayer then return end
-    if TradeManager.IsProcessing or Utils.IsTradeActive() then return end
+function AutoCratesTab.new(deps)
+    local self = setmetatable({}, AutoCratesTab)
     
-    TradeManager.IsProcessing = true
+    self.UIFactory = deps.UIFactory
+    self.StateManager = deps.StateManager
+    self.InventoryManager = deps.InventoryManager
+    self.Utils = deps.Utils
+    self.Config = deps.Config
+    self.StatusLabel = deps.StatusLabel
+    self.InfoLabel = deps.InfoLabel
     
-    -- ใช้ค่าจาก StateManager's Config
-    local THEME = StateManager.Config and StateManager.Config.THEME or {
-        PlayerBtn = Color3.fromRGB(255, 170, 0),
-        Success = Color3.fromRGB(85, 255, 127),
-        ItemEquip = Color3.fromRGB(255, 80, 80)
-    }
+    self.Container = nil
+    self.SelectedCrates = {} -- {CrateName = amount to open}
+    self.CrateCards = {} -- {CrateName = {Card, CheckBox, Input}}
+    self.IsProcessing = false
     
-    StateManager:SetStatus("🚀 Requesting trade...", THEME.PlayerBtn, statusLabel)
-    
-    TradingService:InitializeNewTrade(targetPlayer.UserId):andThen(function(result)
-        TradeManager.IsProcessing = false
-        
-        if result then
-            pcall(function() 
-                TradeController:OnTradeRequestAccepted(targetPlayer.UserId) 
-            end)
-            
-            if debug and debug.setupvalue then
-                pcall(function()
-                    local func = TradeController.AddToTradeData
-                    debug.setupvalue(func, 4, LocalPlayer.UserId)
-                end)
-            end
-            
-            StateManager:SetStatus("✅ Request sent!", THEME.Success, statusLabel)
-        else
-            StateManager:SetStatus("❌ Failed (Cooldown/Busy).", THEME.ItemEquip, statusLabel)
-        end
-    end)
+    return self
 end
 
-function TradeManager.SendTradeSignal(action, itemData, amount, statusLabel, StateManager, Utils, callbacks)
-    local THEME = StateManager.Config and StateManager.Config.THEME or {
-        ItemEquip = Color3.fromRGB(255, 80, 80),
-        ItemInv = Color3.fromRGB(100, 255, 140),
-        BtnDupe = Color3.fromRGB(170, 0, 255)
-    }
+function AutoCratesTab:Init(parent)
+    local THEME = self.Config.THEME
     
-    if not Utils.IsTradeActive() then
-        StateManager:SetStatus("⚠️ Trade Menu NOT open!", THEME.ItemEquip, statusLabel)
-        return
+    -- Header
+    local header = Instance.new("Frame", parent)
+    header.Size = UDim2.new(1, 0, 0, 88)
+    header.BackgroundTransparency = 1
+    
+    self.UIFactory.CreateLabel({
+        Parent = header,
+        Text = "🎁 Auto Open Crates",
+        Size = UDim2.new(1, -8, 0, 24),
+        Position = UDim2.new(0, 8, 0, 0),
+        TextColor = THEME.TextWhite,
+        TextSize = 15,
+        Font = Enum.Font.GothamBold,
+        TextXAlign = Enum.TextXAlignment.Left
+    })
+    
+    self.UIFactory.CreateLabel({
+        Parent = header,
+        Text = "Select crates and open them automatically (1-8 per batch)",
+        Size = UDim2.new(1, -8, 0, 16),
+        Position = UDim2.new(0, 8, 0, 24),
+        TextColor = THEME.TextDim,
+        TextSize = 10,
+        Font = Enum.Font.Gotham,
+        TextXAlign = Enum.TextXAlignment.Left
+    })
+    
+    -- Action Buttons Container
+    local btnContainer = Instance.new("Frame", header)
+    btnContainer.Size = UDim2.new(1, -8, 0, 32)
+    btnContainer.Position = UDim2.new(0, 8, 0, 42)
+    btnContainer.BackgroundTransparency = 1
+    
+    local btnLayout = Instance.new("UIListLayout", btnContainer)
+    btnLayout.FillDirection = Enum.FillDirection.Horizontal
+    btnLayout.Padding = UDim.new(0, 8)
+    
+    -- Select All Button
+    self.SelectAllBtn = self.UIFactory.CreateButton({
+        Parent = btnContainer,
+        Text = "✓ SELECT ALL",
+        Size = UDim2.new(0, 120, 0, 32),
+        BgColor = THEME.AccentBlue,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        CornerRadius = 6
+    })
+    self.UIFactory.AddStroke(self.SelectAllBtn, Color3.fromRGB(140, 160, 255), 1, 0.4)
+    
+    -- Deselect All Button
+    self.DeselectAllBtn = self.UIFactory.CreateButton({
+        Parent = btnContainer,
+        Text = "✕ CLEAR ALL",
+        Size = UDim2.new(0, 120, 0, 32),
+        BgColor = THEME.BtnDefault,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        CornerRadius = 6
+    })
+    
+    -- Auto Open Button
+    self.AutoOpenBtn = self.UIFactory.CreateButton({
+        Parent = btnContainer,
+        Text = "🚀 AUTO OPEN",
+        Size = UDim2.new(0, 140, 0, 32),
+        BgColor = THEME.AccentGreen,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
+        CornerRadius = 6
+    })
+    self.UIFactory.AddStroke(self.AutoOpenBtn, Color3.fromRGB(100, 255, 150), 2, 0.3)
+    
+    -- Setup button clicks
+    self.SelectAllBtn.MouseButton1Click:Connect(function() self:SelectAll() end)
+    self.DeselectAllBtn.MouseButton1Click:Connect(function() self:DeselectAll() end)
+    self.AutoOpenBtn.MouseButton1Click:Connect(function() self:StartAutoOpen() end)
+    
+    -- Scrolling Container
+    self.Container = self.UIFactory.CreateScrollingFrame({
+        Parent = parent,
+        Size = UDim2.new(1, 0, 1, -92),
+        Position = UDim2.new(0, 0, 0, 90)
+    })
+    
+    self.Container.ScrollBarThickness = 4
+    self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)
+    
+    if self.Container:FindFirstChild("UIListLayout") then
+        self.Container.UIListLayout:Destroy()
     end
     
-    local isDupeMode = (StateManager.currentMainTab == "Dupe")
+    local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 12)
     
-    local success, fakeBtn = pcall(function()
-        local btn = Instance.new("ImageButton")
-        local uniqueId = itemData.Guid or (itemData.Name .. "_" .. tick())
-        btn.Name = "TradeItem_" .. uniqueId
-        btn.Visible = false
-        btn.Size = UDim2.new(0, 100, 0, 100)
-        btn.BackgroundTransparency = 1
-        
-        btn:SetAttribute("Service", itemData.Service)
-        btn:SetAttribute("Index", itemData.Name)
-        btn:SetAttribute("Quantity", amount)
-        btn:SetAttribute("IsEquipped", false)
-        
-        -- ✅ FIX: รองรับ Crates
-        if itemData.Category == "Crates" then
-            btn:SetAttribute("ItemName", itemData.Name)
-            btn:SetAttribute("Name", itemData.Name)
-            btn:SetAttribute("Amount", amount)
-            btn:SetAttribute("Service", "CratesService")
-            btn:SetAttribute("IsFakeDupe", true)
-        end
-        
-        -- ✅ FIX: รองรับ Monster ที่ไม่มี UUID (MonstersUnlocked)
-        if itemData.Category == "Secrets" then
-            if itemData.ElementData then
-                btn:SetAttribute("ElementData", itemData.ElementData)
-            end
-            
-            -- ถ้ามี Guid (SavedMonsters) ให้ใส่
-            if itemData.Guid then
-                btn:SetAttribute("Guid", tostring(itemData.Guid))
-            end
-        elseif itemData.Guid and itemData.Category ~= "Crates" then
-            -- กรณีปกติ (Pets, Accessories)
-            btn:SetAttribute("Guid", tostring(itemData.Guid))
-        end
-        
-        -- ใส่ข้อมูลเพิ่มเติม
-        if itemData.RawInfo then
-            if itemData.RawInfo.Evolution then 
-                btn:SetAttribute("Evolution", itemData.RawInfo.Evolution) 
-            end
-            if itemData.RawInfo.Shiny then 
-                btn:SetAttribute("Shiny", true) 
-            end
-            if itemData.RawInfo.Golden then 
-                btn:SetAttribute("Golden", true) 
-            end
-        end
-        
-        game:GetService("CollectionService"):AddTag(btn, "Tradeable")
-        btn.Parent = LocalPlayer:WaitForChild("PlayerGui")
-        return btn
-    end)
+    local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
+    layout.CellSize = UDim2.new(0, 110, 0, 120)
+    layout.CellPadding = UDim2.new(0, 6, 0, 6)
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
     
-    if not success or not fakeBtn then
-        StateManager:SetStatus("❌ Failed to create signal!", THEME.ItemEquip, statusLabel)
-        return
-    end
-    
-    pcall(function()
-        local key = itemData.Guid or itemData.Name
-        
-        if action == "Add" then
-            TradeController:AddToTradeData(fakeBtn, amount)
-            
-            -- ✅ เพิ่มบรรทัดนี้: เก็บ Amount เข้าไปใน itemData
-            itemData.Amount = amount
-            
-            StateManager:AddToTrade(key, itemData)
-            
-            local modePrefix = isDupeMode and "✨ Dupe: " or "✅ Added: "
-            StateManager:SetStatus(modePrefix .. itemData.Name, THEME.ItemInv, statusLabel)
-            
-        elseif action == "Remove" then
-            TradeController:RemoveFromTradeData(fakeBtn, amount)
-            StateManager:RemoveFromTrade(key)
-            StateManager:SetStatus("🗑️ Removed: " .. itemData.Name, THEME.ItemEquip, statusLabel)
-        end
-    end)
-    
-    task.delay(0.5, function() 
-        if fakeBtn and fakeBtn.Parent then 
-            fakeBtn:Destroy() 
-        end 
-    end)
-    
-    if callbacks then
-        if callbacks.RefreshInventory then 
-            callbacks.RefreshInventory() 
-        end
-    end
+    self:RefreshInventory()
+    self:UpdateInfoLabel()
 end
 
-function TradeManager.GetGameTradeId()
-    local success, tradeId = pcall(function()
-        if debug and debug.getupvalues then
-            local upvalues = debug.getupvalues(TradeController.AddToTradeData)
-            for i, v in pairs(upvalues) do
-                if type(v) == "number" and v > 1000 then 
-                    return v 
-                end
-            end
-        end
-    end)
-    return (success and tradeId) or nil
-end
-
-function TradeManager.ExecuteMagicDupe(recipe, statusLabel, amount, StateManager, Utils, InventoryManager)
-    local THEME = StateManager.Config and StateManager.Config.THEME or {
-        Fail = Color3.fromRGB(255, 85, 85),
-        PlayerBtn = Color3.fromRGB(255, 170, 0),
-        BtnDupe = Color3.fromRGB(170, 0, 255),
-        Success = Color3.fromRGB(85, 255, 127)
-    }
-    
-    if TradeManager.IsProcessing or not Utils.IsTradeActive() then
-        if not Utils.IsTradeActive() then
-            StateManager:SetStatus("⚠️ Open Trade Menu first!", THEME.Fail, statusLabel)
-        end
-        return
+function AutoCratesTab:RefreshInventory()
+    -- Clear old cards
+    for _, child in pairs(self.Container:GetChildren()) do
+        if child:IsA("Frame") then child:Destroy() end
     end
+    self.CrateCards = {}
     
     local replica = ReplicaListener:GetReplica()
     local playerData = replica and replica.Data
-    if not playerData or not playerData.ItemsService then
-        StateManager:SetStatus("❌ Data Error!", THEME.Fail, statusLabel)
-        return
-    end
+    local inventoryCrates = (playerData and playerData.CratesService and playerData.CratesService.Crates) or {}
     
-    local targetTier = tonumber(recipe.Tier)
-    local serviceName = recipe.Service
-    local itemsInv = playerData.ItemsService.Inventory
-    local serviceData = itemsInv and itemsInv[serviceName]
-    
-    if serviceData then
-        local ownedAmt = serviceData[tostring(targetTier)] or serviceData[targetTier] or 0
-        if ownedAmt > 0 then
-            StateManager:SetStatus("❌ Owned: You already have this!", THEME.Fail, statusLabel)
-            return
+    local cratesList = {}
+    for crateName, amount in pairs(inventoryCrates) do
+        if amount > 0 then
+            local info = CratesInfo[crateName]
+            local image = info and info.Image or "0"
+            table.insert(cratesList, {
+                Name = crateName,
+                Amount = amount,
+                Image = image
+            })
         end
     end
     
-    local realTradeId = TradeManager.GetGameTradeId()
-    if not realTradeId then
-        local targetIds = {LocalPlayer.UserId}
-        pcall(function()
-            local TradingFrame = LocalPlayer.PlayerGui.Windows:FindFirstChild("TradingFrame")
-            if TradingFrame then
-                for _, v in pairs(TradingFrame:GetDescendants()) do
-                    if v:IsA("TextLabel") and v.Visible and #v.Text > 2 then
-                        for _, p in pairs(game.Players:GetPlayers()) do
-                            if p ~= LocalPlayer and (v.Text:find(p.Name) or v.Text:find(p.DisplayName)) then
-                                table.insert(targetIds, p.UserId)
-                                break
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-        realTradeId = targetIds
+    table.sort(cratesList, function(a, b) return a.Name < b.Name end)
+    
+    for _, crate in ipairs(cratesList) do
+        self:CreateCrateCard(crate)
     end
+end
+
+function AutoCratesTab:CreateCrateCard(crate)
+    local THEME = self.Config.THEME
     
-    local tradingService = ReplicatedStorage.Packages.Knit.Services.TradingService
-    local remote = tradingService.RF:FindFirstChild("UpdateTradeOffer")
+    local isSelected = self.SelectedCrates[crate.Name] ~= nil
     
-    local function sendUpdate(payload)
-        local data = {
-            MonsterService = {}, 
-            CratesService = {}, 
-            Currencies = {},
-            PetsService = {}, 
-            AccessoryService = {},
-            ItemsService = { [serviceName] = payload }
-        }
+    local Card = Instance.new("Frame", self.Container)
+    Card.Name = crate.Name
+    Card.BackgroundColor3 = THEME.CardBg
+    Card.BackgroundTransparency = 0.2
+    Card.BorderSizePixel = 0
+    
+    self.UIFactory.AddCorner(Card, 10)
+    
+    local Stroke = Instance.new("UIStroke", Card)
+    Stroke.Thickness = isSelected and 2 or 1
+    Stroke.Color = isSelected and THEME.AccentGreen or THEME.GlassStroke
+    Stroke.Transparency = 0.5
+    
+    -- Checkbox
+    local CheckBox = Instance.new("Frame", Card)
+    CheckBox.Size = UDim2.new(0, 18, 0, 18)
+    CheckBox.Position = UDim2.new(0, 6, 0, 6)
+    CheckBox.BackgroundColor3 = isSelected and THEME.AccentGreen or Color3.fromRGB(30, 30, 35)
+    CheckBox.BorderSizePixel = 0
+    CheckBox.ZIndex = 15
+    
+    local cbCorner = self.UIFactory.AddCorner(CheckBox, 4)
+    cbCorner.ZIndex = 15
+    local cbStroke = self.UIFactory.AddStroke(CheckBox, isSelected and THEME.AccentGreen or THEME.GlassStroke, 1, 0.5)
+    cbStroke.ZIndex = 15
+    
+    local CheckMark = self.UIFactory.CreateLabel({
+        Parent = CheckBox,
+        Text = isSelected and "✓" or "",
+        Size = UDim2.new(1, 0, 1, 0),
+        TextColor = THEME.TextWhite,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold
+    })
+    CheckMark.ZIndex = 16
+    
+    -- Crate Image
+    local Image = Instance.new("ImageLabel", Card)
+    Image.Size = UDim2.new(0, 50, 0, 50)
+    Image.Position = UDim2.new(0.5, -25, 0, 30)
+    Image.BackgroundTransparency = 1
+    local imgId = tostring(crate.Image)
+    if not imgId:find("rbxassetid://") then imgId = "rbxassetid://" .. imgId end
+    Image.Image = imgId
+    Image.ScaleType = Enum.ScaleType.Fit
+    
+    -- Name Label
+    local NameLbl = self.UIFactory.CreateLabel({
+        Parent = Card,
+        Text = crate.Name,
+        Size = UDim2.new(1, -8, 0, 18),
+        Position = UDim2.new(0, 4, 0, 82),
+        TextColor = THEME.TextWhite,
+        TextSize = 9,
+        Font = Enum.Font.GothamBold
+    })
+    NameLbl.TextWrapped = true
+    
+    -- Amount Input Container
+    local InputContainer = Instance.new("Frame", Card)
+    InputContainer.Size = UDim2.new(1, -12, 0, 24)
+    InputContainer.Position = UDim2.new(0, 6, 1, -28)
+    InputContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    InputContainer.BorderSizePixel = 0
+    InputContainer.ZIndex = 10
+    
+    local inputCorner = self.UIFactory.AddCorner(InputContainer, 5)
+    inputCorner.ZIndex = 10
+    local inputStroke = self.UIFactory.AddStroke(InputContainer, THEME.GlassStroke, 1, 0.5)
+    inputStroke.ZIndex = 10
+    
+    -- ✅ ลบ InputLabel "Open:" ออก และให้ช่อง Input เต็มพื้นที่
+    local AmountInput = Instance.new("TextBox", InputContainer)
+    AmountInput.Size = UDim2.new(0.5, -4, 1, -4)
+    AmountInput.Position = UDim2.new(0, 4, 0, 2)
+    AmountInput.BackgroundTransparency = 1
+    AmountInput.Text = tostring(crate.Amount)
+    AmountInput.TextColor3 = THEME.TextWhite
+    AmountInput.Font = Enum.Font.Code
+    AmountInput.TextSize = 11
+    AmountInput.ClearTextOnFocus = false
+    AmountInput.PlaceholderText = tostring(crate.Amount)
+    AmountInput.TextXAlignment = Enum.TextXAlignment.Left
+    AmountInput.ZIndex = 11
+    
+    -- ✅ แสดง "/จำนวนทั้งหมด" ด้านขวา
+    local TotalLabel = self.UIFactory.CreateLabel({
+        Parent = InputContainer,
+        Text = "/" .. crate.Amount,
+        Size = UDim2.new(0.5, -4, 1, 0),
+        Position = UDim2.new(0.5, 0, 0, 0),
+        TextColor = THEME.TextDim,
+        TextSize = 10,
+        Font = Enum.Font.Code,
+        TextXAlign = Enum.TextXAlignment.Right
+    })
+    TotalLabel.ZIndex = 11
+    
+    -- ✅ FIX: Sanitize ด้วย min=1, max=crate.Amount (จำนวนที่มีจริง)
+    local inputConn = self.Utils.SanitizeNumberInput(AmountInput, crate.Amount, 1)
+    
+    -- Click to Toggle Selection
+    local ClickBtn = Instance.new("TextButton", Card)
+    ClickBtn.Size = UDim2.new(1, 0, 0, 100)
+    ClickBtn.Position = UDim2.new(0, 0, 0, 0)
+    ClickBtn.BackgroundTransparency = 1
+    ClickBtn.Text = ""
+    ClickBtn.ZIndex = 5
+    
+    ClickBtn.MouseButton1Click:Connect(function()
+        local amount = tonumber(AmountInput.Text) or 0
         
-        if type(realTradeId) == "table" then
-            for _, id in pairs(realTradeId) do
-                task.spawn(function() 
-                    pcall(function() 
-                        remote:InvokeServer(id, data) 
-                    end) 
-                end)
+        -- ✅ ตรวจสอบว่าต้องอยู่ใน 1-crate.Amount
+        if amount <= 0 then
+            AmountInput.Text = tostring(crate.Amount)
+            amount = crate.Amount
+        elseif amount > crate.Amount then
+            AmountInput.Text = tostring(crate.Amount)
+            amount = crate.Amount
+        end
+        
+        if self.SelectedCrates[crate.Name] then
+            -- Deselect
+            self.SelectedCrates[crate.Name] = nil
+            Stroke.Color = THEME.GlassStroke
+            Stroke.Thickness = 1
+            CheckBox.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+            CheckMark.Text = ""
+            if CheckBox:FindFirstChild("UIStroke") then
+                CheckBox.UIStroke.Color = THEME.GlassStroke
+                CheckBox.UIStroke.ZIndex = 15
             end
         else
-            pcall(function() 
-                remote:InvokeServer(realTradeId, data) 
+            -- Select
+            self.SelectedCrates[crate.Name] = amount
+            Stroke.Color = THEME.AccentGreen
+            Stroke.Thickness = 2
+            CheckBox.BackgroundColor3 = THEME.AccentGreen
+            CheckMark.Text = "✓"
+            if CheckBox:FindFirstChild("UIStroke") then
+                CheckBox.UIStroke.Color = THEME.AccentGreen
+                CheckBox.UIStroke.ZIndex = 15
+            end
+        end
+        
+        self:UpdateInfoLabel()
+    end)
+    
+    -- Update amount when input changes
+    AmountInput:GetPropertyChangedSignal("Text"):Connect(function()
+        local amount = tonumber(AmountInput.Text) or 0
+        
+        -- ✅ จำกัดค่าใน 1-crate.Amount
+        if amount > crate.Amount then
+            AmountInput.Text = tostring(crate.Amount)
+            amount = crate.Amount
+        elseif amount < 0 then
+            AmountInput.Text = "1"
+            amount = 1
+        end
+        
+        if self.SelectedCrates[crate.Name] and amount > 0 then
+            self.SelectedCrates[crate.Name] = amount
+            self:UpdateInfoLabel()
+        end
+    end)
+    
+    self.CrateCards[crate.Name] = {
+        Card = Card,
+        CheckBox = CheckBox,
+        CheckMark = CheckMark,
+        Input = AmountInput,
+        Stroke = Stroke,
+        MaxAmount = crate.Amount
+    }
+end
+
+function AutoCratesTab:SelectAll()
+    for crateName, data in pairs(self.CrateCards) do
+        local amount = tonumber(data.Input.Text) or data.MaxAmount
+        if amount > 0 and amount <= data.MaxAmount then
+            self.SelectedCrates[crateName] = amount
+            data.Stroke.Color = self.Config.THEME.AccentGreen
+            data.Stroke.Thickness = 2
+            data.CheckBox.BackgroundColor3 = self.Config.THEME.AccentGreen
+            data.CheckMark.Text = "✓"
+            if data.CheckBox:FindFirstChild("UIStroke") then
+                data.CheckBox.UIStroke.Color = self.Config.THEME.AccentGreen
+                data.CheckBox.UIStroke.ZIndex = 15
+            end
+        end
+    end
+    self:UpdateInfoLabel()
+end
+
+function AutoCratesTab:DeselectAll()
+    self.SelectedCrates = {}
+    for _, data in pairs(self.CrateCards) do
+        data.Stroke.Color = self.Config.THEME.GlassStroke
+        data.Stroke.Thickness = 1
+        data.CheckBox.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        data.CheckMark.Text = ""
+        if data.CheckBox:FindFirstChild("UIStroke") then
+            data.CheckBox.UIStroke.Color = self.Config.THEME.GlassStroke
+            data.CheckBox.UIStroke.ZIndex = 15
+        end
+    end
+    self:UpdateInfoLabel()
+end
+
+function AutoCratesTab:UpdateInfoLabel()
+    if not self.InfoLabel then return end
+    
+    local count = 0
+    local total = 0
+    for crateName, amount in pairs(self.SelectedCrates) do
+        count = count + 1
+        total = total + amount
+    end
+    
+    if count > 0 then
+        self.InfoLabel.Text = string.format("📦 Selected: %d types | Total: %d crates", count, total)
+        self.InfoLabel.TextColor3 = self.Config.THEME.AccentGreen
+    else
+        self.InfoLabel.Text = ""
+    end
+end
+
+function AutoCratesTab:StartAutoOpen()
+    if self.IsProcessing then
+        self.StateManager:SetStatus("⚠️ Already processing!", self.Config.THEME.Warning, self.StatusLabel)
+        return
+    end
+    
+    local selectedList = {}
+    for crateName, amount in pairs(self.SelectedCrates) do
+        if amount > 0 then
+            table.insert(selectedList, {Name = crateName, Amount = amount})
+        end
+    end
+    
+    if #selectedList == 0 then
+        self.StateManager:SetStatus("⚠️ No crates selected!", self.Config.THEME.Warning, self.StatusLabel)
+        return
+    end
+    
+    self.IsProcessing = true
+    self.AutoOpenBtn.Text = "⏸️ OPENING..."
+    self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.Warning
+    
+    task.spawn(function()
+        self:ProcessCrateOpening(selectedList)
+    end)
+end
+
+function AutoCratesTab:ProcessCrateOpening(selectedList)
+    local THEME = self.Config.THEME
+    local CratesService = ReplicatedStorage.Packages.Knit.Services.CratesService
+    local UseCrateRemote = CratesService.RF:FindFirstChild("UseCrateItem")
+    
+    if not UseCrateRemote then
+        self.StateManager:SetStatus("❌ Remote not found!", THEME.Fail, self.StatusLabel)
+        self.IsProcessing = false
+        self.AutoOpenBtn.Text = "🚀 AUTO OPEN"
+        self.AutoOpenBtn.BackgroundColor3 = THEME.AccentGreen
+        return
+    end
+    
+    local totalOpened = 0
+    local totalTypes = #selectedList
+    
+    for typeIndex, crateData in ipairs(selectedList) do
+        local crateName = crateData.Name
+        local targetAmount = crateData.Amount
+        local opened = 0
+        
+        self.StateManager:SetStatus(
+            string.format("🎁 Opening %s... (%d/%d)", crateName, typeIndex, totalTypes),
+            THEME.AccentBlue,
+            self.StatusLabel
+        )
+        
+        while opened < targetAmount do
+            local remaining = targetAmount - opened
+            -- ✅ FIX: เปิดได้ 1-8 ชิ้นต่อครั้ง ตามที่เหลือ
+            local batchSize = math.min(8, remaining)
+            
+            -- ถ้าเหลือ 5 → batchSize = 5
+            -- ถ้าเหลือ 12 → batchSize = 8
+            -- ถ้าเหลือ 1 → batchSize = 1
+            
+            local success, err = pcall(function()
+                return UseCrateRemote:InvokeServer(crateName, batchSize)
             end)
-        end
-    end
-    
-    TradeManager.IsProcessing = true
-    local WAIT_TIME = 1.3
-    
-    task.spawn(function()
-        if recipe.Name == "White Strawberry" then
-            StateManager:SetStatus("⏳ Step 1: Baiting (T2 x2)...", THEME.PlayerBtn, statusLabel)
-            sendUpdate({ [2] = 2 })
-            task.wait(WAIT_TIME)
-            StateManager:SetStatus("🧪 Step 2: Injecting (T1 x" .. amount .. ")...", THEME.BtnDupe, statusLabel)
-            sendUpdate({ amount, 1 })
-        elseif string.find(string.lower(recipe.Service), "potion") or string.find(string.lower(recipe.Name), "potion") then
-            -- ✅ แก้ไข: ส่งทีเดียวจบแบบ Array ตามที่ต้องการ
-            sendUpdate({1, 1, amount})
-            StateManager:SetStatus("✅ Potion Dupe Sent!", THEME.Success, statusLabel)
-            TradeManager.IsProcessing = false
-            return -- จบการทำงานตรงนี้เลย ไม่ไหลไปหา else
-        else
-            local availableBaits = {}
-            if serviceData then
-                for _, reqTier in ipairs(recipe.RequiredTiers) do
-                    local tNum = tonumber(reqTier)
-                    if tNum > 2 and tNum ~= targetTier then
-                        local amt = serviceData[tostring(tNum)] or serviceData[tNum] or 0
-                        if amt > 0 then 
-                            table.insert(availableBaits, tNum) 
-                        end
-                    end
+            
+            if success then
+                opened = opened + batchSize
+                totalOpened = totalOpened + batchSize
+                
+                if self.InfoLabel then
+                    self.InfoLabel.Text = string.format(
+                        "✅ Opened: %d | %s: %d/%d (Batch: %d)",
+                        totalOpened,
+                        crateName,
+                        opened,
+                        targetAmount,
+                        batchSize
+                    )
                 end
-            end
-            table.sort(availableBaits, function(a, b) return a > b end)
-            
-            if #availableBaits < 2 then
-                StateManager:SetStatus("❌ Need 2 Baits (T3+)", THEME.Fail, statusLabel)
-                TradeManager.IsProcessing = false
-                return
-            end
-            
-            local t1, t2 = availableBaits[1], availableBaits[2]
-            StateManager:SetStatus("⏳ 1/4: Place T" .. t1, THEME.PlayerBtn, statusLabel)
-            sendUpdate({ [t1] = 1 })
-            task.wait(WAIT_TIME)
-            StateManager:SetStatus("⏳ 2/4: Add T" .. t2, THEME.PlayerBtn, statusLabel)
-            sendUpdate({ [t1] = 1, [t2] = 1 })
-            task.wait(WAIT_TIME)
-            StateManager:SetStatus("✨ 3/4: SWAP to Target", THEME.BtnDupe, statusLabel)
-            sendUpdate({ [targetTier] = amount, [t2] = 1 })
-            task.wait(WAIT_TIME + 0.2)
-            StateManager:SetStatus("🔥 4/4: Finishing...", THEME.Success, statusLabel)
-            sendUpdate({ [targetTier] = amount })
-        end
-        
-        StateManager:SetStatus("✅ Execution Complete!", THEME.Success, statusLabel)
-        TradeManager.IsProcessing = false
-    end)
-end
-
-function TradeManager.ExecutePetDupe(statusLabel, StateManager, Utils)
-    local THEME = StateManager.Config and StateManager.Config.THEME or {
-        Fail = Color3.fromRGB(255, 85, 85),
-        BtnDupe = Color3.fromRGB(170, 0, 255),
-        Success = Color3.fromRGB(85, 255, 127)
-    }
-    
-    if TradeManager.IsProcessing then return end
-    if not Utils.IsTradeActive() then
-        StateManager:SetStatus("⚠️ Open Trade Menu first!", THEME.Fail, statusLabel)
-        return
-    end
-    
-    local replica = ReplicaListener:GetReplica()
-    local myPets = replica.Data.PetsService.Pets
-    
-    local selectedUUIDs = {}
-    local hasEvo2 = false
-    
-    for uuid, selected in pairs(StateManager.selectedPets) do
-        if selected then
-            local petData = myPets[uuid]
-            if petData and (petData.Evolution or 0) >= 2 then
-                hasEvo2 = true
-                break
-            end
-            table.insert(selectedUUIDs, uuid)
-        end
-    end
-    
-    if hasEvo2 then
-        StateManager:SetStatus("❌ Cannot Dupe Evo 2 pets! (Unselect them)", THEME.Fail, statusLabel)
-        return
-    end
-    
-    if #selectedUUIDs == 0 then
-        StateManager:SetStatus("⚠️ Select pets (Evo 0-1) to dupe!", THEME.Fail, statusLabel)
-        return
-    end
-    
-    if not replica or not replica.Data then
-        StateManager:SetStatus("❌ Data Error!", THEME.Fail, statusLabel)
-        return
-    end
-    
-    local playerData = replica.Data
-    local availableBaitCrates = {}
-    
-    for internalId, info in pairs(CratesInfo) do
-        if type(info) == "table" then
-            local displayName = info.Name or internalId
-            local hasNameKey = (playerData.CratesService.Crates[displayName] ~= nil)
-            local hasIdKey = (playerData.CratesService.Crates[internalId] ~= nil)
-            
-            if not hasNameKey and not hasIdKey and displayName ~= "KeKa Crate" then
-                table.insert(availableBaitCrates, displayName)
-            end
-        end
-    end
-    
-    if #availableBaitCrates == 0 then
-        StateManager:SetStatus("❌ No 'Pure Nil' crates found!", THEME.Fail, statusLabel)
-        TradeManager.IsProcessing = false
-        return
-    end
-    
-    local baitCrateName = availableBaitCrates[math.random(1, #availableBaitCrates)]
-    
-    local petPayload = {}
-    for _, uuid in ipairs(selectedUUIDs) do
-        local petData = myPets[uuid]
-        if petData then
-            petPayload[uuid] = {
-                Name = petData.Name,
-                Evolution = 2
-            }
-        end
-    end
-    
-    local realTradeId = TradeManager.GetGameTradeId()
-    if not realTradeId then
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p ~= LocalPlayer then
-                realTradeId = p.UserId
+                
+                task.wait(0.3)
+            else
+                warn("Failed to open " .. crateName .. ": " .. tostring(err))
+                self.StateManager:SetStatus(
+                    string.format("⚠️ Error on %s: %s", crateName, tostring(err)),
+                    THEME.Warning,
+                    self.StatusLabel
+                )
                 break
             end
         end
+        
+        -- เคลียร์รายการที่เปิดเสร็จแล้ว
+        self.SelectedCrates[crateName] = nil
+        
+        task.wait(0.2)
     end
     
-    if not realTradeId then
-        StateManager:SetStatus("❌ Trade ID not found!", THEME.Fail, statusLabel)
-        return
-    end
+    self.StateManager:SetStatus(
+        string.format("✅ Done! Opened %d crates total", totalOpened),
+        THEME.Success,
+        self.StatusLabel
+    )
     
-    TradeManager.IsProcessing = true
-    StateManager:SetStatus("✨ Executing Pet Dupe...", THEME.BtnDupe, statusLabel)
+    self.IsProcessing = false
+    self.AutoOpenBtn.Text = "🚀 AUTO OPEN"
+    self.AutoOpenBtn.BackgroundColor3 = THEME.AccentGreen
     
-    local remote = ReplicatedStorage.Packages.Knit.Services.TradingService.RF:FindFirstChild("UpdateTradeOffer")
-    
-    task.spawn(function()
-        local data = {
-            MonsterService = {},
-            CratesService = {
-                [baitCrateName] = 10
-            },
-            Currencies = {},
-            PetsService = petPayload,
-            ItemsService = {},
-            AccessoryService = {}
-        }
-        
-        local success, err = pcall(function()
-            return remote:InvokeServer(realTradeId, data)
-        end)
-        
-        if success then
-            StateManager:SetStatus("✅ Dupe Success (Evo 2 Applied)!", THEME.Success, statusLabel)
-        else
-            StateManager:SetStatus("❌ Dupe Failed: Server Error", THEME.Fail, statusLabel)
-        end
-        
-        task.wait(1)
-        TradeManager.IsProcessing = false
-    end)
+    task.wait(1)
+    self:RefreshInventory()
+    self:UpdateInfoLabel()
 end
 
-function TradeManager.DeleteSelectedPets(statusLabel, callback, StateManager, Utils)
-    local THEME = StateManager.Config and StateManager.Config.THEME or {
-        Fail = Color3.fromRGB(255, 85, 85),
-        Success = Color3.fromRGB(85, 255, 127)
-    }
-    
-    if Utils.IsTradeActive() then
-        StateManager:SetStatus("⚠️ Close trade menu before deleting!", THEME.Fail, statusLabel)
-        return
-    end
-    
-    local selectedUUIDs = {}
-    for uuid, selected in pairs(StateManager.selectedPets) do
-        if selected then 
-            table.insert(selectedUUIDs, uuid) 
-        end
-    end
-    
-    if #selectedUUIDs == 0 then return end
-    
-    StateManager:SetStatus("🗑️ Deleting pets...", THEME.Fail, statusLabel)
-    
-    local success, err = pcall(function()
-        local Remote = ReplicatedStorage.Packages.Knit.Services.PetsService.RF.Delete
-        return Remote:InvokeServer(selectedUUIDs)
-    end)
-    
-    if success then
-        StateManager.selectedPets = {}
-        StateManager:SetStatus("✅ Deleted successfully!", THEME.Success, statusLabel)
-        if callback then callback() end
-    else
-        StateManager:SetStatus("❌ Delete failed: " .. tostring(err), THEME.Fail, statusLabel)
-    end
-end
-
-function TradeManager.ExecuteEvolution(statusLabel, callback, StateManager)
-    local THEME = StateManager.Config and StateManager.Config.THEME or {
-        BtnSelected = Color3.fromRGB(0, 140, 255),
-        Success = Color3.fromRGB(85, 255, 127),
-        Fail = Color3.fromRGB(255, 85, 85)
-    }
-    
-    local selectedUUIDs = {}
-    for uuid, order in pairs(StateManager.selectedPets) do
-        table.insert(selectedUUIDs, {UUID = uuid, Order = order})
-    end
-    
-    table.sort(selectedUUIDs, function(a, b) 
-        return a.Order < b.Order 
-    end)
-    
-    local finalPayload = {}
-    for _, item in ipairs(selectedUUIDs) do
-        table.insert(finalPayload, item.UUID)
-    end
-    
-    StateManager:SetStatus("🧬 Evolving Pets...", THEME.BtnSelected, statusLabel)
-    
-    local success, err = pcall(function()
-        return ReplicatedStorage.Packages.Knit.Services.PetsService.RF.Evolve:InvokeServer(finalPayload)
-    end)
-    
-    if success then
-        StateManager:SetStatus("✅ Evolution Success!", THEME.Success, statusLabel)
-        StateManager.selectedPets = {}
-        if callback then callback() end
-    else
-        StateManager:SetStatus("❌ Evo Failed: " .. tostring(err), THEME.Fail, statusLabel)
-    end
-end
-
-
-return TradeManager
+return AutoCratesTab
