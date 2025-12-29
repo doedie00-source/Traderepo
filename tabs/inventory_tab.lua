@@ -77,7 +77,6 @@ function InventoryTab:Init(parent)
 end
 
 function InventoryTab:RefreshInventory()
-    -- Clear เก่า
     for _, child in pairs(self.Container:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
@@ -85,18 +84,10 @@ function InventoryTab:RefreshInventory()
     local playerData = self.InventoryManager.GetPlayerData()
     if not playerData then return end
 
-    -- ✨ แก้จุดนี้: เรียกไปที่ self.Config.HIDDEN_LISTS โดยตรง
-    local HIDDEN = self.Config.HIDDEN_LISTS 
-    
-    -- ป้องกันถ้า HIDDEN ยังเป็น Nil ให้หยุดทำงานก่อนไม่ให้ Error
-    if not HIDDEN then 
-        warn("HIDDEN_LISTS not found in Config!")
-        return 
-    end
-
+    local HIDDEN = self.Config.HIDDEN_LISTS
     local itemsToRender = {}
 
-    -- 1. เช็ค Pets (ตรวจสอบว่ามี PetsService และตาราง Pets ก่อน)
+    -- 1. เช็ค Pets (เอาดาวและเลเวลมาด้วย)
     if playerData.PetsService and playerData.PetsService.Pets then
         for uuid, data in pairs(playerData.PetsService.Pets) do
             if self:CheckHidden(data.Name, HIDDEN.Pets) then
@@ -108,14 +99,15 @@ function InventoryTab:RefreshInventory()
         end
     end
 
-    -- 2. เช็ค Monsters/Secrets
+    -- 2. เช็ค Monsters (รองรับทั้งแบบ String และ Table)
     if playerData.MonsterService and playerData.MonsterService.SavedMonsters then
         for uuid, data in pairs(playerData.MonsterService.SavedMonsters) do
-            local mName = type(data) == "table" and data.Name or data
+            local mName = (type(data) == "table") and data.Name or data
             if self:CheckHidden(mName, HIDDEN.Secrets) then
                 table.insert(itemsToRender, {
                     Name = mName, UUID = uuid, Category = "Secrets", Service = "MonsterService", 
-                    Raw = data, Image = MonsterInfo[mName] and MonsterInfo[mName].Image
+                    Raw = (type(data) == "table") and data or {Name = mName}, 
+                    Image = MonsterInfo[mName] and MonsterInfo[mName].Image
                 })
             end
         end
@@ -159,72 +151,64 @@ end
 
 function InventoryTab:CreateItemCard(item)
     local THEME = self.Config.THEME
-    
     local Card = Instance.new("Frame", self.Container)
     Card.BackgroundColor3 = THEME.CardBg
     Card.BackgroundTransparency = 0.2
     self.UIFactory.AddCorner(Card, 10)
     self.UIFactory.AddStroke(Card, THEME.GlassStroke, 1, 0.5)
 
-    -- รูปไอคอน
-    local imgId = item.Image or 0
+    -- ไอคอน
     local icon = Instance.new("ImageLabel", Card)
     icon.Size = UDim2.new(0, 60, 0, 60)
-    icon.Position = UDim2.new(0.5, -30, 0, 10)
+    icon.Position = UDim2.new(0.5, -30, 0, 8)
     icon.BackgroundTransparency = 1
-    icon.Image = "rbxassetid://" .. tostring(imgId)
+    icon.Image = "rbxassetid://" .. tostring(item.Image or 0)
     icon.ScaleType = Enum.ScaleType.Fit
 
-    -- ชื่อและรายละเอียด
-    local details = self.Utils.GetItemDetails(item.Raw, item.Category)
+    -- ✨ แสดงดาว (Evolution) สำหรับ Pet/Monster
+    if item.Raw and item.Raw.Evolution and tonumber(item.Raw.Evolution) > 0 then
+        local starContainer = Instance.new("Frame", Card)
+        starContainer.Size = UDim2.new(1, 0, 0, 15)
+        starContainer.Position = UDim2.new(0, 0, 0, 68)
+        starContainer.BackgroundTransparency = 1
+        local layout = Instance.new("UIListLayout", starContainer)
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.Padding = UDim.new(0, -2)
+
+        for i = 1, tonumber(item.Raw.Evolution) do
+            local s = Instance.new("ImageLabel", starContainer)
+            s.Size = UDim2.new(0, 12, 0, 12)
+            s.BackgroundTransparency = 1
+            s.Image = "rbxassetid://3926305904" -- ไอคอนดาว
+            s.ImageColor3 = THEME.StarColor or Color3.fromRGB(255, 215, 0)
+        end
+    end
+
+    -- ชื่อและเลเวล
+    local levelText = (item.Raw and item.Raw.Level) and (" [Lv."..item.Raw.Level.."]") or ""
     local nameLbl = self.UIFactory.CreateLabel({
         Parent = Card,
-        Text = item.Name .. details,
-        Size = UDim2.new(1, -8, 0, 35),
-        Position = UDim2.new(0, 4, 1, -40),
+        Text = item.Name .. levelText,
+        Size = UDim2.new(1, -8, 0, 25),
+        Position = UDim2.new(0, 4, 1, -30),
         TextSize = 9,
         Font = Enum.Font.GothamBold,
         TextColor = THEME.TextWhite
     })
     nameLbl.TextWrapped = true
-    nameLbl.RichText = true
 
-    -- ถ้าเป็น Crates แสดงจำนวน
-    if item.Amount then
-        local amtLbl = self.UIFactory.CreateLabel({
-            Parent = Card,
-            Text = "x" .. item.Amount,
-            Size = UDim2.new(0, 30, 0, 15),
-            Position = UDim2.new(1, -35, 0, 5),
-            TextColor = THEME.AccentBlue,
-            Font = Enum.Font.Code,
-            TextSize = 10
-        })
-    end
-
-    -- ปุ่มกดส่ง Trade
+    -- ปุ่มส่ง
     local btn = Instance.new("TextButton", Card)
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.BackgroundTransparency = 1
     btn.Text = ""
-
     btn.MouseButton1Click:Connect(function()
-        if not self.Utils.IsTradeActive() then
-            self.StateManager:SetStatus("⚠️ Open Trade first!", THEME.Fail, self.StatusLabel)
-            return
-        end
-        
-        -- ส่งของ (ถ้าเป็น Crate อาจจะต้องทำ Popup ถามจำนวน แต่เบื้องต้นส่ง 1)
+        if not self.Utils.IsTradeActive() then return end
         self.TradeManager.SendTradeSignal("Add", {
-            Name = item.Name,
-            Guid = item.UUID,
-            Service = item.Service,
-            Category = item.Category,
-            RawInfo = item.Raw
+            Name = item.Name, Guid = item.UUID, Service = item.Service, Category = item.Category, RawInfo = item.Raw
         }, 1, self.StatusLabel, self.StateManager, self.Utils)
-        
-        -- เปลี่ยนสีขอบให้รู้ว่าส่งไปแล้ว
-        self.UIFactory.AddStroke(Card, THEME.Warning, 2, 0)
+        self.UIFactory.AddStroke(Card, THEME.Success, 2, 0)
     end)
 end
 
