@@ -33,6 +33,7 @@ end
 function GUI:Initialize()
     local CONFIG = self.Config.CONFIG
     local THEME = self.Config.THEME
+    _G.ModernGUI = self
 
     if CoreGui:FindFirstChild(CONFIG.GUI_NAME) then
         pcall(function() CoreGui[CONFIG.GUI_NAME]:Destroy() end)
@@ -325,6 +326,19 @@ function GUI:SwitchTab(tabName)
             })
             tab:Init(self.ContentArea)
             self.ActiveTabInstance = tab
+        
+        elseif tabName == "Inventory" and self.TabsModules.Inventory then
+            local tab = self.TabsModules.Inventory.new({
+                UIFactory = self.UIFactory,
+                StateManager = self.StateManager,
+                InventoryManager = self.InventoryManager,
+                TradeManager = self.TradeManager,
+                Utils = self.Utils,
+                Config = self.Config,
+                StatusLabel = self.StatusLabel
+            })
+            tab:Init(self.ContentArea)
+            self.ActiveTabInstance = tab    
         end
     end)
 
