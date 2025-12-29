@@ -1,5 +1,5 @@
 -- tabs/dupe_tab.lua
--- Dupe Tab Module - FIXED RIGHT ALIGN INFO
+-- Dupe Tab Module - FIXED POPUP OVERLAP
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,7 +32,7 @@ function DupeTab.new(deps)
     self.Utils = deps.Utils
     self.Config = deps.Config
     self.StatusLabel = deps.StatusLabel
-    self.InfoLabel = deps.InfoLabel -- ✨ รับ InfoLabel มาใช้
+    self.InfoLabel = deps.InfoLabel
     self.ScreenGui = deps.ScreenGui
     
     self.Container = nil
@@ -40,6 +40,10 @@ function DupeTab.new(deps)
     self.CurrentSubTab = "Items"
     self.FloatingButtons = {} 
     self.TooltipRef = nil
+    
+    -- ✅ เพิ่ม flag ป้องกัน popup ซ้อนทับ
+    self.isPopupOpen = false
+    self.currentPopup = nil
     
     return self
 end
@@ -194,10 +198,6 @@ function DupeTab:SwitchSubTab(name)
     self.CurrentSubTab = name
     self.StateManager.currentDupeTab = name
     
-    -- ❌❌ ลบ 2 บรรทัดนี้ทิ้งไปเลยครับ ห้ามมีเด็ดขาด ❌❌
-    -- self.StateManager.selectedPets = {} 
-    -- self.StateManager.selectedCrates = {} 
-    
     -- Update Sub-tab Buttons Style
     for tabName, btn in pairs(self.SubTabButtons) do
         local isSelected = (tabName == name)
@@ -252,10 +252,7 @@ function DupeTab:RefreshInventory()
     end
 end
 
--- ✨ ลบฟังก์ชัน UpdateStatusWarning เก่าที่ทับซ้อนออก หรือเปลี่ยนให้เช็ค InfoLabel แทน
 function DupeTab:UpdateStatusWarning()
-    -- ฟังก์ชันนี้ไม่จำเป็นแล้ว เพราะเราจัดการใน SwitchSubTab 
-    -- แต่ใส่ไว้กันเหนียวเผื่อเรียกใช้ที่อื่น
     if self.CurrentSubTab == "Items" and self.InfoLabel then
         self.InfoLabel.Text = "⚠️ LIMITS: Scrolls ~150 | Tickets ~10K | Potions ~2K"
     elseif self.InfoLabel then
@@ -263,7 +260,7 @@ function DupeTab:UpdateStatusWarning()
     end
 end
 
--- ============================ RENDERING (ตัดส่วนที่ไม่เกี่ยวข้องออกเพื่อความกระชับ) ============================
+-- ============================ RENDERING ============================
 
 function DupeTab:RenderItemDupeGrid()
     local THEME = self.Config.THEME
@@ -292,7 +289,6 @@ function DupeTab:RenderItemDupeGrid()
     local recipes = DUPE_RECIPES.Items or {}
     local playerData = self.InventoryManager.GetPlayerData()
     
-    -- Ensure warning is shown
     self:UpdateStatusWarning()
     
     for _, recipe in ipairs(recipes) do
@@ -300,34 +296,26 @@ function DupeTab:RenderItemDupeGrid()
     end
 end
 
-
 function DupeTab:CreateItemCard(recipe, playerData)
     local THEME = self.Config.THEME
     local serviceName = recipe.Service
     
-    -- ฟังก์ชันช่วยเช็คของ (เขียนสดเพื่อความชัวร์)
     local function checkHasItem(svc, t)
         if not playerData or not playerData.ItemsService or not playerData.ItemsService.Inventory then 
             return false 
         end
         local category = playerData.ItemsService.Inventory[svc]
         if not category then return false end
-        -- เช็คทั้ง String และ Number
         local amount = category[tostring(t)] or category[tonumber(t)] or 0
         return amount > 0
     end
     
-    -- 1. เช็คว่ามี "ตัวจบ" (Tier 3) อยู่แล้วไหม?
-    -- ถ้ามี = isOwned เป็น true
     local isOwned = checkHasItem(serviceName, recipe.Tier)
     
-    -- 2. เช็ควัตถุดิบ (Tier 1, 2)
     local totalNeeded, foundCount = 0, 0
     local isPotion = (serviceName == "Strawberry" or serviceName:find("Potion"))
     
     if isPotion then
-        -- [POTION] นับเฉพาะ Tier ที่ "ไม่ใช่" ตัวจบ
-        -- สูตร {1, 2, 3} -> นับแค่ 1 กับ 2
         for _, tier in ipairs(recipe.RequiredTiers) do
             if tonumber(tier) ~= tonumber(recipe.Tier) then
                 totalNeeded = totalNeeded + 1
@@ -337,7 +325,6 @@ function DupeTab:CreateItemCard(recipe, playerData)
             end
         end
     else
-        -- [SCROLLS/TICKETS] Logic เดิม
         totalNeeded = 2
         for _, tier in ipairs(recipe.RequiredTiers) do
             local tNum = tonumber(tier)
@@ -349,10 +336,8 @@ function DupeTab:CreateItemCard(recipe, playerData)
         end
     end
     
-    -- พร้อมทำ = ต้องยังไม่มีของ (not isOwned) และ วัตถุดิบครบ
     local isReady = (not isOwned) and (foundCount >= totalNeeded)
     
-    -- --- สร้าง UI ---
     local Card = Instance.new("Frame", self.Container)
     Card.Name = recipe.Name
     Card.BackgroundColor3 = THEME.CardBg
@@ -364,15 +349,12 @@ function DupeTab:CreateItemCard(recipe, playerData)
     local statusText = ""
     
     if isOwned then
-        -- ถ้ามีของแล้ว -> สีแดง, ขึ้น Owned
         strokeColor = THEME.Fail
         statusText = "<font color='#ff5555' size='9'>(OWNED)</font>"
     elseif isReady then
-        -- ยังไม่มีของ + วัตถุดิบครบ -> สีเขียว, Ready
         strokeColor = THEME.DupeReady
         statusText = "<font color='#00ffaa' size='10'>✓ READY</font>"
     else
-        -- วัตถุดิบไม่ครบ -> สีเหลือง
         strokeColor = THEME.Warning
         statusText = string.format("<font color='#ffcc33' size='9'>Missing: %d/%d</font>", foundCount, totalNeeded)
     end
@@ -385,7 +367,6 @@ function DupeTab:CreateItemCard(recipe, playerData)
     Image.Size = UDim2.new(0, 64, 0, 64)
     Image.Image = "rbxassetid://" .. (recipe.Image or "0")
     Image.ScaleType = Enum.ScaleType.Fit
-    -- ถ้ามีของแล้ว ทำรูปมืดลง
     if isOwned then Image.ImageColor3 = Color3.fromRGB(80, 80, 80) end
     
     local NameLbl = Instance.new("TextLabel", Card)
@@ -406,6 +387,9 @@ function DupeTab:CreateItemCard(recipe, playerData)
     ClickBtn.Text = ""
     
     ClickBtn.MouseButton1Click:Connect(function()
+        -- ✅ ป้องกันการคลิกซ้ำขณะ popup เปิดอยู่
+        if self.isPopupOpen then return end
+        
         if self.TradeManager.IsProcessing then return end
         
         if not self.Utils.IsTradeActive() then
@@ -413,7 +397,6 @@ function DupeTab:CreateItemCard(recipe, playerData)
             return
         end
         
-        -- ✅ [เพิ่มกลับมา] ถ้ามีของแล้ว ห้ามทำ (ตามเงื่อนไขเกม)
         if isOwned then
             self.StateManager:SetStatus("❌ Already Owned (Limit 1)", THEME.Fail, self.StatusLabel)
             return
@@ -436,40 +419,6 @@ function DupeTab:CreateItemCard(recipe, playerData)
         self:ShowQuantityPopup({Default = startVal, Max = currentMax}, function(quantity)
             self.TradeManager.ExecuteMagicDupe(recipe, self.StatusLabel, quantity, self.StateManager, self.Utils, self.InventoryManager)
         end)
-    end)
-end
-
-function DupeTab:OnItemCardClick(recipe, isOwned, isReady, foundCount, totalNeeded, serviceName)
-    local THEME = self.Config.THEME
-    
-    if self.TradeManager.IsProcessing then return end
-    
-    if not self.Utils.IsTradeActive() then
-        self.StateManager:SetStatus("⚠️ Open Trade Menu first!", THEME.Fail, self.StatusLabel)
-        return
-    end
-    
-    if isOwned then
-        self.StateManager:SetStatus("❌ Already Owned!", THEME.Fail, self.StatusLabel)
-        return
-    end
-    
-    if not isReady then
-        self.StateManager:SetStatus(string.format("⚠️ Missing Ingredients (%d/%d)", foundCount, totalNeeded), THEME.Warning, self.StatusLabel)
-        return
-    end
-    
-    local startVal, currentMax = 99, 100
-    if serviceName == "Scrolls" then
-        startVal, currentMax = 99, 120
-    elseif serviceName == "Tickets" then
-        startVal, currentMax = 5000, 10000
-    else
-        startVal, currentMax = 500, 1000
-    end
-    
-    self:ShowQuantityPopup({Default = startVal, Max = currentMax}, function(quantity)
-        self.TradeManager.ExecuteMagicDupe(recipe, self.StatusLabel, quantity, self.StateManager, self.Utils, self.InventoryManager)
     end)
 end
 
@@ -591,6 +540,9 @@ function DupeTab:CreateCrateCard(crate, inventoryCrates)
     ClickBtn.Text = ""
     
     ClickBtn.MouseButton1Click:Connect(function()
+        -- ✅ ป้องกันการคลิกซ้ำขณะ popup เปิดอยู่
+        if self.isPopupOpen then return end
+        
         self:OnCrateCardClick(crate, isOwnedInSystem)
     end)
 end
@@ -653,16 +605,13 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
         for i, crate in ipairs(cratesList) do
             local amountInInv = inventoryCrates[crate.DisplayName] or inventoryCrates[crate.InternalID]
             
-            -- เช็ค: 1.ต้องไม่มีในตัว 2.ต้องยังไม่เคยเลือกเข้าเทรด
             local isAlreadySelected = self.StateManager.selectedCrates[crate.DisplayName] 
                                       or self.StateManager:IsInTrade(crate.DisplayName)
             
             if amountInInv == nil and not isAlreadySelected then
                 
-                -- ✅ บังคับค่า State เป็น 1000 ทันที
                 self.StateManager.selectedCrates[crate.DisplayName] = 1000
 
-                -- ส่งคำสั่งเทรด 1000
                 self.TradeManager.SendTradeSignal("Add", {
                     Name = crate.DisplayName,
                     Service = "CratesService",
@@ -671,7 +620,6 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
                 
                 addedCount = addedCount + 1
                 
-                -- ✅ รีเฟรชหน้าจอทุกๆ 5 ชิ้น เพื่อให้เห็นเลข x1000 เด้งขึ้นมาเลย (ไม่ต้องรอจบ)
                 if addedCount % 5 == 0 then
                     self:RefreshInventory()
                 end
@@ -691,7 +639,6 @@ function DupeTab:OnAddAllCrates(cratesList, inventoryCrates)
             self.FloatingButtons.BtnAddAll1k.Text = "➕ ADD 1K ALL"
         end
         
-        -- รีเฟรชครั้งสุดท้ายปิดท้าย
         self:RefreshInventory()
     end)
 end
@@ -1116,8 +1063,21 @@ function DupeTab:UpdateEvoButtonState()
     self.FloatingButtons.BtnEvoPet:SetAttribute("IsValid", isValid)
 end
 
+-- ✅ แก้ไข ShowQuantityPopup - ป้องกัน popup ซ้อนทับ
 function DupeTab:ShowQuantityPopup(itemData, onConfirm)
+    -- ป้องกันเปิด popup ซ้ำ
+    if self.isPopupOpen then return end
+    
+    -- ปิด popup เก่า (ถ้ามี)
+    if self.currentPopup and self.currentPopup.Parent then
+        self.currentPopup:Destroy()
+        self.currentPopup = nil
+    end
+    
     local THEME = self.Config.THEME
+    
+    -- ✅ ตั้ง flag ว่า popup กำลังเปิด
+    self.isPopupOpen = true
     
     local PopupFrame = Instance.new("Frame", self.ScreenGui)
     PopupFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -1125,6 +1085,9 @@ function DupeTab:ShowQuantityPopup(itemData, onConfirm)
     PopupFrame.BackgroundTransparency = 0.3
     PopupFrame.ZIndex = 3000
     PopupFrame.BorderSizePixel = 0
+    
+    -- ✅ เก็บ reference ของ popup ปัจจุบัน
+    self.currentPopup = PopupFrame
     
     local popupBox = Instance.new("Frame", PopupFrame)
     popupBox.Size = UDim2.new(0, 240, 0, 150)
@@ -1164,6 +1127,16 @@ function DupeTab:ShowQuantityPopup(itemData, onConfirm)
     local maxValue = itemData.Max or 999999
     local inputConn = self.Utils.SanitizeNumberInput(input, maxValue)
     
+    -- ✅ ฟังก์ชันปิด popup พร้อมล้างค่า flag
+    local function ClosePopup()
+        if inputConn then inputConn:Disconnect() end
+        if PopupFrame and PopupFrame.Parent then
+            PopupFrame:Destroy()
+        end
+        self.isPopupOpen = false
+        self.currentPopup = nil
+    end
+    
     local confirmBtn = self.UIFactory.CreateButton({
         Size = UDim2.new(0.85, 0, 0, 34),
         Position = UDim2.new(0.075, 0, 0.7, 0),
@@ -1184,23 +1157,27 @@ function DupeTab:ShowQuantityPopup(itemData, onConfirm)
     })
     closeBtn.ZIndex = 3002
     
-    closeBtn.MouseButton1Click:Connect(function()
-        if inputConn then inputConn:Disconnect() end
-        PopupFrame:Destroy()
-    end)
+    -- ✅ ใช้ฟังก์ชัน ClosePopup แทน
+    closeBtn.MouseButton1Click:Connect(ClosePopup)
     
     confirmBtn.MouseButton1Click:Connect(function()
         local quantity = tonumber(input.Text)
         if quantity and quantity > 0 and quantity <= maxValue then
+            ClosePopup()
             onConfirm(quantity)
-            if inputConn then inputConn:Disconnect() end
-            PopupFrame:Destroy()
         end
     end)
 end
 
+-- ✅ แก้ไข ShowConfirm - ป้องกัน confirm ซ้อนทับ
 function DupeTab:ShowConfirm(text, onYes)
+    -- ป้องกันเปิด confirm ซ้ำขณะมี popup อยู่แล้ว
+    if self.isPopupOpen then return end
+    
     local THEME = self.Config.THEME
+    
+    -- ✅ ตั้ง flag
+    self.isPopupOpen = true
     
     local ConfirmOverlay = Instance.new("Frame", self.ScreenGui)
     ConfirmOverlay.Size = UDim2.new(1, 0, 1, 0)
@@ -1208,6 +1185,9 @@ function DupeTab:ShowConfirm(text, onYes)
     ConfirmOverlay.BackgroundTransparency = 0.15
     ConfirmOverlay.ZIndex = 2000
     ConfirmOverlay.BorderSizePixel = 0
+    
+    -- ✅ เก็บ reference
+    self.currentPopup = ConfirmOverlay
     
     local box = Instance.new("Frame", ConfirmOverlay)
     box.Size = UDim2.new(0, 310, 0, 155)
@@ -1253,14 +1233,21 @@ function DupeTab:ShowConfirm(text, onYes)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.Padding = UDim.new(0, 10)
     
+    -- ✅ ฟังก์ชันปิด confirm
+    local function CloseConfirm()
+        if ConfirmOverlay and ConfirmOverlay.Parent then
+            ConfirmOverlay:Destroy()
+        end
+        self.isPopupOpen = false
+        self.currentPopup = nil
+    end
+    
     local cancelBtn = self.UIFactory.CreateButton({
         Text = "CANCEL",
         Size = UDim2.new(0, 100, 0, 34),
         BgColor = THEME.BtnDefault,
         Parent = btnContainer,
-        OnClick = function()
-            ConfirmOverlay:Destroy()
-        end
+        OnClick = CloseConfirm
     })
     cancelBtn.ZIndex = 2003
     
@@ -1270,7 +1257,7 @@ function DupeTab:ShowConfirm(text, onYes)
         BgColor = THEME.Fail,
         Parent = btnContainer,
         OnClick = function()
-            ConfirmOverlay:Destroy()
+            CloseConfirm()
             onYes()
         end
     })
