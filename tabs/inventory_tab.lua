@@ -1,11 +1,11 @@
 -- tabs/inventory_tab.lua
--- Hidden Inventory Tab (All Categories in One Page)
+-- Hidden Inventory Tab (All Categories in One Page) - IMPROVED LOGIC
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- Load Info Modules (สำหรับเอารูปไอคอน)
+-- Load Info Modules
 local function SafeRequire(path)
     local success, result = pcall(function() return require(path) end)
     return success and result or {}
@@ -35,7 +35,6 @@ end
 function InventoryTab:Init(parent)
     local THEME = self.Config.THEME
     
-    -- Header
     self.UIFactory.CreateLabel({
         Parent = parent,
         Text = "💎 Hidden Treasures",
@@ -47,7 +46,7 @@ function InventoryTab:Init(parent)
         TextXAlign = Enum.TextXAlignment.Left
     })
     
-    local sub = self.UIFactory.CreateLabel({
+    self.UIFactory.CreateLabel({
         Parent = parent,
         Text = "Items currently in your inventory (Hidden List only)",
         Size = UDim2.new(1, -8, 0, 14),
@@ -58,7 +57,6 @@ function InventoryTab:Init(parent)
         TextXAlign = Enum.TextXAlignment.Left
     })
 
-    -- Grid Container
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
         Size = UDim2.new(1, 0, 1, -50),
@@ -66,7 +64,6 @@ function InventoryTab:Init(parent)
         UseGrid = true 
     })
     
-    -- ตั้งค่า Grid ให้สวยเหมือนหน้า Dupe
     local layout = self.Container:FindFirstChild("UIGridLayout")
     if layout then
         layout.CellSize = UDim2.new(0, 92, 0, 115)
@@ -87,7 +84,7 @@ function InventoryTab:RefreshInventory()
     local HIDDEN = self.Config.HIDDEN_LISTS
     local itemsToRender = {}
 
-    -- 1. เช็ค Pets (เอาดาวและเลเวลมาด้วย)
+    -- 1. เช็ค Pets
     if playerData.PetsService and playerData.PetsService.Pets then
         for uuid, data in pairs(playerData.PetsService.Pets) do
             if self:CheckHidden(data.Name, HIDDEN.Pets) then
@@ -99,15 +96,16 @@ function InventoryTab:RefreshInventory()
         end
     end
 
-    -- 2. เช็ค Monsters (รองรับทั้งแบบ String และ Table)
+    -- 2. เช็ค Monsters (Secrets) - ตรรกะรองรับทั้ง String และ Table
     if playerData.MonsterService and playerData.MonsterService.SavedMonsters then
         for uuid, data in pairs(playerData.MonsterService.SavedMonsters) do
             local mName = (type(data) == "table") and data.Name or data
+            local mRaw = (type(data) == "table") and data or {Name = mName} -- แปลงเป็น table เสมอเพื่อใช้ใน CreateCard
+            
             if self:CheckHidden(mName, HIDDEN.Secrets) then
                 table.insert(itemsToRender, {
                     Name = mName, UUID = uuid, Category = "Secrets", Service = "MonsterService", 
-                    Raw = (type(data) == "table") and data or {Name = mName}, 
-                    Image = MonsterInfo[mName] and MonsterInfo[mName].Image
+                    Raw = mRaw, Image = MonsterInfo[mName] and MonsterInfo[mName].Image
                 })
             end
         end
@@ -137,7 +135,6 @@ function InventoryTab:RefreshInventory()
         end
     end
 
-    -- Render การ์ด
     for _, item in ipairs(itemsToRender) do
         self:CreateItemCard(item)
     end
@@ -159,16 +156,17 @@ function InventoryTab:CreateItemCard(item)
 
     -- ไอคอน
     local icon = Instance.new("ImageLabel", Card)
-    icon.Size = UDim2.new(0, 60, 0, 60)
-    icon.Position = UDim2.new(0.5, -30, 0, 8)
+    icon.Size = UDim2.new(0, 62, 0, 62)
+    icon.Position = UDim2.new(0.5, -31, 0, 6)
     icon.BackgroundTransparency = 1
     icon.Image = "rbxassetid://" .. tostring(item.Image or 0)
     icon.ScaleType = Enum.ScaleType.Fit
 
-    -- ✨ แสดงดาว (Evolution) สำหรับ Pet/Monster
-    if item.Raw and item.Raw.Evolution and tonumber(item.Raw.Evolution) > 0 then
+    -- ✨ ตรรกะ Evolution (ดาว) สำหรับ Pet และ Monster
+    local evo = item.Raw and tonumber(item.Raw.Evolution) or 0
+    if evo > 0 then
         local starContainer = Instance.new("Frame", Card)
-        starContainer.Size = UDim2.new(1, 0, 0, 15)
+        starContainer.Size = UDim2.new(1, 0, 0, 14)
         starContainer.Position = UDim2.new(0, 0, 0, 68)
         starContainer.BackgroundTransparency = 1
         local layout = Instance.new("UIListLayout", starContainer)
@@ -176,29 +174,43 @@ function InventoryTab:CreateItemCard(item)
         layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
         layout.Padding = UDim.new(0, -2)
 
-        for i = 1, tonumber(item.Raw.Evolution) do
+        for i = 1, evo do
             local s = Instance.new("ImageLabel", starContainer)
-            s.Size = UDim2.new(0, 12, 0, 12)
+            s.Size = UDim2.new(0, 13, 0, 13)
             s.BackgroundTransparency = 1
-            s.Image = "rbxassetid://3926305904" -- ไอคอนดาว
+            s.Image = "rbxassetid://3926305904"
             s.ImageColor3 = THEME.StarColor or Color3.fromRGB(255, 215, 0)
         end
     end
 
-    -- ชื่อและเลเวล
-    local levelText = (item.Raw and item.Raw.Level) and (" [Lv."..item.Raw.Level.."]") or ""
+    -- ✨ ตรรกะ Level และสถานะ Shiny/Golden
+    local lv = (item.Raw and item.Raw.Level) and (" [Lv."..item.Raw.Level.."]") or ""
+    local shiny = (item.Raw and (item.Raw.Shiny or item.Raw.Golden)) and " ✨" or ""
+    
     local nameLbl = self.UIFactory.CreateLabel({
         Parent = Card,
-        Text = item.Name .. levelText,
-        Size = UDim2.new(1, -8, 0, 25),
-        Position = UDim2.new(0, 4, 1, -30),
+        Text = item.Name .. lv .. shiny,
+        Size = UDim2.new(1, -8, 0, 30),
+        Position = UDim2.new(0, 4, 1, -35),
         TextSize = 9,
         Font = Enum.Font.GothamBold,
         TextColor = THEME.TextWhite
     })
     nameLbl.TextWrapped = true
 
-    -- ปุ่มส่ง
+    -- จำนวน (สำหรับ Crates)
+    if item.Amount then
+        local amt = self.UIFactory.CreateLabel({
+            Parent = Card,
+            Text = "x"..item.Amount,
+            Size = UDim2.new(0, 40, 0, 16),
+            Position = UDim2.new(1, -42, 0, 4),
+            TextColor = THEME.AccentBlue,
+            Font = Enum.Font.Code,
+            TextSize = 10
+        })
+    end
+
     local btn = Instance.new("TextButton", Card)
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.BackgroundTransparency = 1
