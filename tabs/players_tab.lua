@@ -140,7 +140,7 @@ function PlayersTab:RefreshList()
             tradeBtn:SetAttribute("OriginalColor", THEME.AccentPurple)
             tradeBtn:SetAttribute("OriginalTextColor", THEME.TextWhite)
             
-            -- คัดลอกตั้งแต่ท่อนนี้ไปวางแทนของเก่าได้เลยครับ
+            -- คัดลอกตั้งแต่บรรทัดนี้ไปวางแทนของเก่าได้เลยครับ
             tradeBtn.MouseButton1Click:Connect(function()
                 if self.Utils.IsTradeActive() then
                     self.StateManager:SetStatus("🔒 Trade is active! Finish it first", THEME.Fail, self.StatusLabel)
@@ -164,7 +164,7 @@ function PlayersTab:RefreshList()
                         task.wait(0.5)
                     end
                 end)
-            end) -- <--- จบฟังก์ชันปุ่มกด
+            end)
             
             count = count + 1
         end -- <--- จบ if plr ~= LocalPlayer
