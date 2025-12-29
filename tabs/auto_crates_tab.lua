@@ -137,8 +137,8 @@ function AutoCratesTab:Init(parent)
     padding.PaddingBottom = UDim.new(0, 12)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
-    layout.CellSize = UDim2.new(0, 160, 0, 130)
-    layout.CellPadding = UDim2.new(0, 8, 0, 8)
+    layout.CellSize = UDim2.new(0, 110, 0, 120)
+    layout.CellPadding = UDim2.new(0, 6, 0, 6)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     
@@ -197,29 +197,31 @@ function AutoCratesTab:CreateCrateCard(crate)
     
     -- Checkbox
     local CheckBox = Instance.new("Frame", Card)
-    CheckBox.Size = UDim2.new(0, 20, 0, 20)
-    CheckBox.Position = UDim2.new(0, 8, 0, 8)
+    CheckBox.Size = UDim2.new(0, 18, 0, 18)
+    CheckBox.Position = UDim2.new(0, 6, 0, 6)
     CheckBox.BackgroundColor3 = isSelected and THEME.AccentGreen or Color3.fromRGB(30, 30, 35)
     CheckBox.BorderSizePixel = 0
-    CheckBox.ZIndex = 10
+    CheckBox.ZIndex = 15
     
-    self.UIFactory.AddCorner(CheckBox, 4)
-    self.UIFactory.AddStroke(CheckBox, isSelected and THEME.AccentGreen or THEME.GlassStroke, 1, 0.5)
+    local cbCorner = self.UIFactory.AddCorner(CheckBox, 4)
+    cbCorner.ZIndex = 15
+    local cbStroke = self.UIFactory.AddStroke(CheckBox, isSelected and THEME.AccentGreen or THEME.GlassStroke, 1, 0.5)
+    cbStroke.ZIndex = 15
     
     local CheckMark = self.UIFactory.CreateLabel({
         Parent = CheckBox,
         Text = isSelected and "✓" or "",
         Size = UDim2.new(1, 0, 1, 0),
         TextColor = THEME.TextWhite,
-        TextSize = 14,
+        TextSize = 12,
         Font = Enum.Font.GothamBold
     })
-    CheckMark.ZIndex = 11
+    CheckMark.ZIndex = 16
     
     -- Crate Image
     local Image = Instance.new("ImageLabel", Card)
-    Image.Size = UDim2.new(0, 64, 0, 64)
-    Image.Position = UDim2.new(0.5, -32, 0, 28)
+    Image.Size = UDim2.new(0, 50, 0, 50)
+    Image.Position = UDim2.new(0.5, -25, 0, 30)
     Image.BackgroundTransparency = 1
     local imgId = tostring(crate.Image)
     if not imgId:find("rbxassetid://") then imgId = "rbxassetid://" .. imgId end
@@ -230,65 +232,60 @@ function AutoCratesTab:CreateCrateCard(crate)
     local NameLbl = self.UIFactory.CreateLabel({
         Parent = Card,
         Text = crate.Name,
-        Size = UDim2.new(1, -8, 0, 20),
-        Position = UDim2.new(0, 4, 0, 94),
+        Size = UDim2.new(1, -8, 0, 18),
+        Position = UDim2.new(0, 4, 0, 82),
         TextColor = THEME.TextWhite,
-        TextSize = 10,
+        TextSize = 9,
         Font = Enum.Font.GothamBold
     })
     NameLbl.TextWrapped = true
     
     -- Amount Input Container
     local InputContainer = Instance.new("Frame", Card)
-    InputContainer.Size = UDim2.new(1, -16, 0, 28)
-    InputContainer.Position = UDim2.new(0, 8, 1, -32)
+    InputContainer.Size = UDim2.new(1, -12, 0, 24)
+    InputContainer.Position = UDim2.new(0, 6, 1, -28)
     InputContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     InputContainer.BorderSizePixel = 0
+    InputContainer.ZIndex = 10
     
-    self.UIFactory.AddCorner(InputContainer, 6)
-    self.UIFactory.AddStroke(InputContainer, THEME.GlassStroke, 1, 0.5)
+    local inputCorner = self.UIFactory.AddCorner(InputContainer, 5)
+    inputCorner.ZIndex = 10
+    local inputStroke = self.UIFactory.AddStroke(InputContainer, THEME.GlassStroke, 1, 0.5)
+    inputStroke.ZIndex = 10
     
-    local InputLabel = self.UIFactory.CreateLabel({
-        Parent = InputContainer,
-        Text = "Open:",
-        Size = UDim2.new(0, 40, 1, 0),
-        Position = UDim2.new(0, 4, 0, 0),
-        TextColor = THEME.TextGray,
-        TextSize = 9,
-        Font = Enum.Font.GothamBold,
-        TextXAlign = Enum.TextXAlignment.Left
-    })
-    
-    -- ✅ FIX: ตั้งค่า Max ตามจำนวนที่มีจริง
+    -- ✅ ลบ InputLabel "Open:" ออก และให้ช่อง Input เต็มพื้นที่
     local AmountInput = Instance.new("TextBox", InputContainer)
-    AmountInput.Size = UDim2.new(1, -46, 1, -4)
-    AmountInput.Position = UDim2.new(0, 42, 0, 2)
+    AmountInput.Size = UDim2.new(0.5, -4, 1, -4)
+    AmountInput.Position = UDim2.new(0, 4, 0, 2)
     AmountInput.BackgroundTransparency = 1
     AmountInput.Text = tostring(crate.Amount)
     AmountInput.TextColor3 = THEME.TextWhite
     AmountInput.Font = Enum.Font.Code
     AmountInput.TextSize = 11
     AmountInput.ClearTextOnFocus = false
-    AmountInput.PlaceholderText = "1-" .. crate.Amount
+    AmountInput.PlaceholderText = tostring(crate.Amount)
+    AmountInput.TextXAlignment = Enum.TextXAlignment.Left
+    AmountInput.ZIndex = 11
+    
+    -- ✅ แสดง "/จำนวนทั้งหมด" ด้านขวา
+    local TotalLabel = self.UIFactory.CreateLabel({
+        Parent = InputContainer,
+        Text = "/" .. crate.Amount,
+        Size = UDim2.new(0.5, -4, 1, 0),
+        Position = UDim2.new(0.5, 0, 0, 0),
+        TextColor = THEME.TextDim,
+        TextSize = 10,
+        Font = Enum.Font.Code,
+        TextXAlign = Enum.TextXAlignment.Right
+    })
+    TotalLabel.ZIndex = 11
     
     -- ✅ FIX: Sanitize ด้วย min=1, max=crate.Amount (จำนวนที่มีจริง)
     local inputConn = self.Utils.SanitizeNumberInput(AmountInput, crate.Amount, 1)
     
-    -- Available Amount Badge
-    local AvailableBadge = self.UIFactory.CreateLabel({
-        Parent = Card,
-        Text = "/" .. crate.Amount,
-        Size = UDim2.new(0, 50, 0, 16),
-        Position = UDim2.new(1, -54, 1, -50),
-        TextColor = THEME.TextDim,
-        TextSize = 8,
-        Font = Enum.Font.Code,
-        TextXAlign = Enum.TextXAlignment.Right
-    })
-    
     -- Click to Toggle Selection
     local ClickBtn = Instance.new("TextButton", Card)
-    ClickBtn.Size = UDim2.new(1, 0, 0, 90)
+    ClickBtn.Size = UDim2.new(1, 0, 0, 100)
     ClickBtn.Position = UDim2.new(0, 0, 0, 0)
     ClickBtn.BackgroundTransparency = 1
     ClickBtn.Text = ""
@@ -315,6 +312,7 @@ function AutoCratesTab:CreateCrateCard(crate)
             CheckMark.Text = ""
             if CheckBox:FindFirstChild("UIStroke") then
                 CheckBox.UIStroke.Color = THEME.GlassStroke
+                CheckBox.UIStroke.ZIndex = 15
             end
         else
             -- Select
@@ -325,6 +323,7 @@ function AutoCratesTab:CreateCrateCard(crate)
             CheckMark.Text = "✓"
             if CheckBox:FindFirstChild("UIStroke") then
                 CheckBox.UIStroke.Color = THEME.AccentGreen
+                CheckBox.UIStroke.ZIndex = 15
             end
         end
         
@@ -371,6 +370,7 @@ function AutoCratesTab:SelectAll()
             data.CheckMark.Text = "✓"
             if data.CheckBox:FindFirstChild("UIStroke") then
                 data.CheckBox.UIStroke.Color = self.Config.THEME.AccentGreen
+                data.CheckBox.UIStroke.ZIndex = 15
             end
         end
     end
@@ -386,6 +386,7 @@ function AutoCratesTab:DeselectAll()
         data.CheckMark.Text = ""
         if data.CheckBox:FindFirstChild("UIStroke") then
             data.CheckBox.UIStroke.Color = self.Config.THEME.GlassStroke
+            data.CheckBox.UIStroke.ZIndex = 15
         end
     end
     self:UpdateInfoLabel()
