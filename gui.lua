@@ -376,7 +376,7 @@ function GUI:StartMonitoring()
         local missingCounter = 0
         
         while self.ScreenGui and self.ScreenGui.Parent do
-            -- [ของเดิม] อัปเดตสถานะปุ่มในหน้า Players
+            -- อัพเดทสถานะปุ่มในหน้า Players
             if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.UpdateButtonStates then
                 pcall(function() self.ActiveTabInstance:UpdateButtonStates() end)
             end
@@ -388,11 +388,11 @@ function GUI:StartMonitoring()
                 missingCounter = missingCounter + 1
             end
             
-            -- เมื่อเทรดปิดจริง (เกินเวลาที่กำหนด)
+            -- ✅ FIX: เมื่อเทรดปิดจริง (เกินเวลาที่กำหนด)
             if missingCounter > CONFIG.TRADE_RESET_THRESHOLD then
                 self.TradeManager.IsProcessing = false
                 
-                -- ✨ ตรวจเช็ค: ถ้ามีของค้างในเทรด หรือเรายังอยู่หน้า Inventory ให้ทำการ Reset
+                -- ✅ ตรวจเช็ค: ถ้ามีของค้างในเทรด หรือเรายังอยู่หน้า Inventory ให้ทำการ Reset
                 if next(self.StateManager.itemsInTrade) ~= nil or self.StateManager.currentMainTab == "Inventory" then
                     
                     local wasInInventory = (self.StateManager.currentMainTab == "Inventory")
@@ -408,10 +408,16 @@ function GUI:StartMonitoring()
                         pcall(function() self.ActiveTabInstance:RefreshInventory() end)
                     end
 
-                    -- ✨ [เพิ่มใหม่] ถ้าเทรดจบแล้วยังค้างหน้า Inventory ให้วาร์ปกลับไปหน้า Players
+                    -- ✅ FIX CRITICAL: สลับกลับไปหน้า Players เฉพาะเมื่อ
+                    -- 1. เราอยู่หน้า Inventory
+                    -- 2. เทรดปิดจริงๆ (missingCounter เกิน threshold แล้ว)
                     if wasInInventory then
+                        task.wait(0.2) -- หน่วงเล็กน้อยเพื่อให้ UI update
                         self:SwitchTab("Players")
                     end
+                    
+                    -- รีเซ็ต counter หลัง reset
+                    missingCounter = 0
                 end
             end
             
@@ -419,7 +425,7 @@ function GUI:StartMonitoring()
         end
     end)
     
-    -- [ของเดิม] รีเฟรชรายชื่อคนเมื่อเข้า/ออกเซิร์ฟ
+    -- รีเฟรชรายชื่อคนเมื่อเข้า/ออกเซิร์ฟ
     Players.PlayerAdded:Connect(function()
         if self.StateManager.currentMainTab == "Players" and self.ActiveTabInstance and self.ActiveTabInstance.RefreshList then
             pcall(function() self.ActiveTabInstance:RefreshList() end)
