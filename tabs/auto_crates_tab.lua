@@ -164,6 +164,9 @@ function AutoCratesTab:CreateCrateCard(crate)
     local THEME = self.Config.THEME
     local isSelected = self.SelectedCrates[crate.Name] ~= nil
     
+    -- ค่าเริ่มต้น 500 หรือตามที่มี
+    local defaultAmount = math.min(500, crate.Amount)
+    
     local Card = Instance.new("Frame", self.Container)
     Card.Name = crate.Name
     Card.BackgroundColor3 = THEME.CardBg
@@ -202,13 +205,13 @@ function AutoCratesTab:CreateCrateCard(crate)
     })
     CheckMark.ZIndex = 16
     
-    -- Total Amount (แค่ตัวเลขสีขาว ไม่มีกรอบ)
+    -- Total Amount (เพิ่ม x และทำสีทึบลง)
     local TotalLabel = self.UIFactory.CreateLabel({
         Parent = Card,
-        Text = tostring(crate.Amount),
+        Text = "x" .. tostring(crate.Amount),
         Size = UDim2.new(0, 40, 0, 20),
         Position = UDim2.new(1, -44, 0, 2),
-        TextColor = THEME.TextWhite,
+        TextColor = Color3.fromRGB(180, 180, 180), -- สีเทาอ่อนลง
         TextSize = 11,
         Font = Enum.Font.GothamBold
     })
@@ -226,7 +229,7 @@ function AutoCratesTab:CreateCrateCard(crate)
     Image.Image = imgId
     Image.ScaleType = Enum.ScaleType.Fit
     
-    -- Input (ไม่มีชื่อแล้ว)
+    -- Input (ค่าเริ่มต้น 500 หรือน้อยกว่า)
     local InputContainer = Instance.new("Frame", Card)
     InputContainer.Size = UDim2.new(1, -10, 0, 18)
     InputContainer.Position = UDim2.new(0, 5, 1, -22)
@@ -244,13 +247,15 @@ function AutoCratesTab:CreateCrateCard(crate)
     AmountInput.Size = UDim2.new(1, -8, 1, -2)
     AmountInput.Position = UDim2.new(0, 4, 0, 1)
     AmountInput.BackgroundTransparency = 1
-    AmountInput.Text = tostring(crate.Amount)
-    AmountInput.TextColor3 = THEME.AccentGreen
-    AmountInput.Font = Enum.Font.Code
-    AmountInput.TextSize = 10
+    AmountInput.Text = tostring(defaultAmount)
+    AmountInput.TextColor3 = Color3.fromRGB(255, 255, 255) -- สีขาวเต็ม
+    AmountInput.Font = Enum.Font.GothamBold -- เปลี่ยนเป็น Bold
+    AmountInput.TextSize = 11 -- ขนาดใหญ่ขึ้นนิด
     AmountInput.ClearTextOnFocus = false
-    AmountInput.PlaceholderText = tostring(crate.Amount)
+    AmountInput.PlaceholderText = tostring(defaultAmount)
     AmountInput.TextXAlignment = Enum.TextXAlignment.Center
+    AmountInput.TextStrokeTransparency = 0.7 -- เพิ่ม stroke ให้เด่นขึ้น
+    AmountInput.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     
     self.Utils.SanitizeNumberInput(AmountInput, crate.Amount, 1)
     
@@ -263,14 +268,14 @@ function AutoCratesTab:CreateCrateCard(crate)
     ClickBtn.ZIndex = 5
     
     ClickBtn.MouseButton1Click:Connect(function()
-        local amount = tonumber(AmountInput.Text) or crate.Amount
+        local amount = tonumber(AmountInput.Text) or math.min(500, crate.Amount)
         
         if amount <= 0 then
-            AmountInput.Text = tostring(crate.Amount)
-            amount = crate.Amount
+            amount = math.min(500, crate.Amount)
+            AmountInput.Text = tostring(amount)
         elseif amount > crate.Amount then
-            AmountInput.Text = tostring(crate.Amount)
             amount = crate.Amount
+            AmountInput.Text = tostring(amount)
         end
         
         if self.SelectedCrates[crate.Name] then
@@ -317,7 +322,8 @@ function AutoCratesTab:CreateCrateCard(crate)
         Input = AmountInput,
         Stroke = Stroke,
         CheckBoxStroke = cbStroke,
-        MaxAmount = crate.Amount
+        MaxAmount = crate.Amount,
+        DefaultAmount = defaultAmount
     }
 end
 
@@ -356,7 +362,7 @@ end
 
 function AutoCratesTab:SelectAll()
     for crateName, data in pairs(self.CrateCards) do
-        local amount = tonumber(data.Input.Text) or data.MaxAmount
+        local amount = tonumber(data.Input.Text) or data.DefaultAmount
         if amount > 0 and amount <= data.MaxAmount then
             self.SelectedCrates[crateName] = amount
             data.Stroke.Color = self.Config.THEME.AccentGreen
