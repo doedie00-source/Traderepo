@@ -523,4 +523,159 @@ function TradeManager.ExecuteEvolution(statusLabel, callback, StateManager)
     end
 end
 
+function TradeManager.ExecuteAutoEvo2Star(statusLabel, callback, StateManager, Utils)
+    local THEME = StateManager.Config and StateManager.Config.THEME or {
+        BtnSelected = Color3.fromRGB(0, 140, 255),
+        Success = Color3.fromRGB(85, 255, 127),
+        Fail = Color3.fromRGB(255, 85, 85),
+        Warning = Color3.fromRGB(255, 200, 50)
+    }
+    
+    local ReplicaListener = require(ReplicatedStorage.Packages.Knit).GetController("ReplicaListener")
+    local replica = ReplicaListener:GetReplica()
+    local myPets = replica and replica.Data.PetsService and replica.Data.PetsService.Pets or {}
+    
+    -- ✅ เก็บ UUID ที่เลือกพร้อมลำดับ
+    local selectedPetsData = {}
+    for uuid, order in pairs(StateManager.selectedPets) do
+        if myPets[uuid] then
+            table.insert(selectedPetsData, {
+                UUID = uuid, 
+                Order = order,
+                Data = myPets[uuid]
+            })
+        end
+    end
+    
+    -- เรียงตามลำดับที่เลือก
+    table.sort(selectedPetsData, function(a, b) 
+        return a.Order < b.Order 
+    end)
+    
+    -- ✅ ตัวแรก = เป้าหมาย (ต้องกลายเป็น Evo 2)
+    local targetUUID = selectedPetsData[1].UUID
+    local targetData = selectedPetsData[1].Data
+    local targetEvo = targetData.Evolution or 0
+    
+    -- แยกตาม Evo Level
+    local evo0List = {}
+    local evo1List = {}
+    
+    for _, pet in ipairs(selectedPetsData) do
+        local evo = pet.Data.Evolution or 0
+        if evo == 0 then
+            table.insert(evo0List, pet.UUID)
+        elseif evo == 1 then
+            table.insert(evo1List, pet.UUID)
+        end
+    end
+    
+    StateManager:SetStatus("🧬 Starting Auto Evo System...", THEME.BtnSelected, statusLabel)
+    
+    local evoSteps = {}
+    
+    -- ✅ Step 1: ทำให้ target เป็น Evo 1 (ถ้ายังไม่ใช่)
+    if targetEvo == 0 then
+        if #evo0List < 3 then
+            StateManager:SetStatus("❌ Error: Need 3 Evo 0 minimum", THEME.Fail, statusLabel)
+            return
+        end
+        
+        -- Evolve: target + 2 ตัวแรกจาก evo0List
+        local batch = {targetUUID, evo0List[2], evo0List[3]}
+        table.insert(evoSteps, {
+            UUIDs = batch,
+            Description = "Target → Evo 1"
+        })
+        
+        -- ลบออกจาก list
+        table.remove(evo0List, 1) -- target
+        table.remove(evo0List, 1) -- ตัวที่ 2
+        table.remove(evo0List, 1) -- ตัวที่ 3
+        
+        -- target กลายเป็น Evo 1 แล้ว
+        table.insert(evo1List, targetUUID)
+    end
+    
+    -- ✅ Step 2: แปลง Evo 0 ที่เหลือเป็น Evo 1
+    while #evo0List >= 3 do
+        local batch = {evo0List[1], evo0List[2], evo0List[3]}
+        table.insert(evoSteps, {
+            UUIDs = batch,
+            Description = "Evo 0 → Evo 1"
+        })
+        
+        -- ตัวแรกใน batch จะกลายเป็น Evo 1
+        table.insert(evo1List, evo0List[1])
+        
+        table.remove(evo0List, 1)
+        table.remove(evo0List, 1)
+        table.remove(evo0List, 1)
+    end
+    
+    -- ✅ Step 3: ทำให้ target เป็น Evo 2
+    if #evo1List >= 3 then
+        -- หา index ของ target ใน evo1List
+        local targetIndex = nil
+        for i, uuid in ipairs(evo1List) do
+            if uuid == targetUUID then
+                targetIndex = i
+                break
+            end
+        end
+        
+        if targetIndex then
+            -- สลับ target ไว้ตำแหน่งแรก
+            evo1List[targetIndex] = evo1List[1]
+            evo1List[1] = targetUUID
+            
+            local batch = {evo1List[1], evo1List[2], evo1List[3]}
+            table.insert(evoSteps, {
+                UUIDs = batch,
+                Description = "Target → Evo 2 ✨"
+            })
+        else
+            StateManager:SetStatus("❌ Error: Target not found in Evo 1 list", THEME.Fail, statusLabel)
+            return
+        end
+    else
+        StateManager:SetStatus("❌ Error: Not enough Evo 1 for final step", THEME.Fail, statusLabel)
+        return
+    end
+    
+    -- ✅ Execute ทีละขั้น
+    task.spawn(function()
+        local Remote = ReplicatedStorage.Packages.Knit.Services.PetsService.RF.Evolve
+        
+        for i, step in ipairs(evoSteps) do
+            local stepNum = i
+            local totalSteps = #evoSteps
+            
+            StateManager:SetStatus(
+                string.format("🧬 Step %d/%d: %s", stepNum, totalSteps, step.Description), 
+                THEME.Warning, 
+                statusLabel
+            )
+            
+            local success, err = pcall(function()
+                return Remote:InvokeServer(step.UUIDs)
+            end)
+            
+            if not success then
+                StateManager:SetStatus("❌ Evolution Failed: " .. tostring(err), THEME.Fail, statusLabel)
+                return
+            end
+            
+            task.wait(1) -- รอระหว่างขั้นตอน
+        end
+        
+        StateManager:SetStatus("✅ Auto Evo Complete! Target is now Evo 2 ✨", THEME.Success, statusLabel)
+        StateManager.selectedPets = {}
+        
+        if callback then 
+            callback() 
+        end
+    end)
+end
+
 return TradeManager
