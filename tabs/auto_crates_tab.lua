@@ -202,28 +202,19 @@ function AutoCratesTab:CreateCrateCard(crate)
     })
     CheckMark.ZIndex = 16
     
-    -- Total Badge
-    local TotalBadge = Instance.new("Frame", Card)
-    TotalBadge.Size = UDim2.new(0, 32, 0, 16)
-    TotalBadge.Position = UDim2.new(1, -36, 0, 4)
-    TotalBadge.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
-    TotalBadge.BorderSizePixel = 0
-    
-    self.UIFactory.AddCorner(TotalBadge, 4)
-    
-    local totalStroke = Instance.new("UIStroke", TotalBadge)
-    totalStroke.Color = THEME.GlassStroke
-    totalStroke.Thickness = 1
-    totalStroke.Transparency = 0.5
-    
+    -- Total Amount (แค่ตัวเลขสีขาว ไม่มีกรอบ)
     local TotalLabel = self.UIFactory.CreateLabel({
-        Parent = TotalBadge,
+        Parent = Card,
         Text = tostring(crate.Amount),
-        Size = UDim2.new(1, 0, 1, 0),
-        TextColor = THEME.TextDim,
-        TextSize = 9,
-        Font = Enum.Font.Code
+        Size = UDim2.new(0, 40, 0, 20),
+        Position = UDim2.new(1, -44, 0, 2),
+        TextColor = THEME.TextWhite,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold
     })
+    TotalLabel.TextStrokeTransparency = 0.5
+    TotalLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    TotalLabel.ZIndex = 20
     
     -- Image (ใหญ่ขึ้น ตรงกลางการ์ด)
     local Image = Instance.new("ImageLabel", Card)
