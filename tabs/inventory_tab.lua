@@ -463,7 +463,7 @@ function InventoryTab:ShowQuantityPopup(itemData, onConfirm)
     local closeBtn = self.UIFactory.CreateButton({
         Size = UDim2.new(0, 26, 0, 26),
         Position = UDim2.new(1, -30, 0, 4),
-        Text = "✕",
+        Text = "X",
         BgColor = THEME.Fail,
         CornerRadius = 6,
         Parent = popupBox
