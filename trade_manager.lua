@@ -261,11 +261,12 @@ function TradeManager.ExecuteMagicDupe(recipe, statusLabel, amount, StateManager
             task.wait(WAIT_TIME)
             StateManager:SetStatus("🧪 Step 2: Injecting (T1 x" .. amount .. ")...", THEME.BtnDupe, statusLabel)
             sendUpdate({ amount, 1 })
-        elseif recipe.Service:find("Potion") then
+        elseif string.find(string.lower(recipe.Service), "potion") or string.find(string.lower(recipe.Name), "potion") then
+            -- ✅ แก้ไข: ส่งทีเดียวจบแบบ Array ตามที่ต้องการ
             sendUpdate({1, 1, amount})
             StateManager:SetStatus("✅ Potion Dupe Sent!", THEME.Success, statusLabel)
             TradeManager.IsProcessing = false
-            return -- ใส่ return เพื่อให้มันจบตรงนี้ ไม่ไหลลงไปข้างล่าง
+            return -- จบการทำงานตรงนี้เลย ไม่ไหลไปหา else
         else
             local availableBaits = {}
             if serviceData then
