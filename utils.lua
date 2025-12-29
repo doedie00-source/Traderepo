@@ -79,7 +79,7 @@ function Utils.SanitizeNumberInput(textBox, maxValue, minValue)
     return connection
 end
 
--- ✨ NEW: ดึง Hidden Lists จากเกมโดยอัตโนมัติ
+-- ✨ NEW: ดึง Hidden Lists จากเกมโดยอัตโนมัติ (with Safety)
 function Utils.ExtractHiddenLists()
     local hiddenLists = {
         Accessories = {},
@@ -88,84 +88,97 @@ function Utils.ExtractHiddenLists()
         Crates = {}
     }
     
+    -- ⏳ รอให้เกมโหลดเสร็จก่อน
+    local maxWaitTime = 10
+    local startTime = tick()
+    
+    while not LocalPlayer.PlayerScripts:FindFirstChild("Controllers") do
+        if tick() - startTime > maxWaitTime then
+            warn("⚠️ Controllers not loaded after " .. maxWaitTime .. " seconds")
+            return hiddenLists
+        end
+        task.wait(0.5)
+    end
+    
+    task.wait(1) -- รอเพิ่มเติมให้แน่ใจว่าโหลดเสร็จ
+    
     local success, err = pcall(function()
-        local TradeController = LocalPlayer.PlayerScripts.Controllers.TradeController
+        local Controllers = LocalPlayer.PlayerScripts:FindFirstChild("Controllers")
+        if not Controllers then return end
         
-        -- 🔍 หา Accessories Hidden List
-        local AccessoriesModule = TradeController.Tradeables:FindFirstChild("Accessories")
-        if AccessoriesModule then
-            local accScript = require(AccessoriesModule)
-            if debug and debug.getupvalues then
-                local upvalues = debug.getupvalues(accScript.Update)
-                for _, v in pairs(upvalues) do
-                    if type(v) == "table" and #v > 0 and type(v[1]) == "string" then
-                        -- ตรวจสอบว่าเป็น accessory names (มักจะมี "Ghost", "Pumpkin" ฯลฯ)
-                        if v[1]:find("Ghost") or v[1]:find("Pumpkin") or v[1]:find("Tri") then
-                            hiddenLists.Accessories = v
-                            break
+        local TradeController = Controllers:FindFirstChild("TradeController")
+        if not TradeController then return end
+        
+        local Tradeables = TradeController:FindFirstChild("Tradeables")
+        if not Tradeables then return end
+        
+        -- 🔍 แยก function ตรวจสอบแต่ละประเภท
+        local function SafeExtractList(moduleName, keywords, minLength)
+            minLength = minLength or 3
+            local module = Tradeables:FindFirstChild(moduleName)
+            if not module then return {} end
+            
+            local loadSuccess, moduleScript = pcall(function()
+                return require(module)
+            end)
+            
+            if not loadSuccess then 
+                warn("⚠️ Failed to require " .. moduleName)
+                return {} 
+            end
+            
+            if not moduleScript.Update then return {} end
+            
+            if not debug or not debug.getupvalues then 
+                warn("⚠️ debug.getupvalues not available")
+                return {} 
+            end
+            
+            local upvalSuccess, upvalues = pcall(function()
+                return debug.getupvalues(moduleScript.Update)
+            end)
+            
+            if not upvalSuccess then return {} end
+            
+            for _, v in pairs(upvalues) do
+                if type(v) == "table" and #v >= minLength then
+                    -- ตรวจสอบว่ามี keyword ที่เราต้องการ
+                    local matchCount = 0
+                    for i = 1, math.min(#v, 5) do
+                        if type(v[i]) == "string" then
+                            for _, keyword in ipairs(keywords) do
+                                if v[i]:find(keyword) then
+                                    matchCount = matchCount + 1
+                                    break
+                                end
+                            end
                         end
+                    end
+                    
+                    -- ถ้ามี keyword ตรงอย่างน้อย 2 ตัว = น่าจะใช่
+                    if matchCount >= 2 then
+                        return v
                     end
                 end
             end
+            
+            return {}
         end
         
-        -- 🔍 หา Crates Hidden List
-        local CratesModule = TradeController.Tradeables:FindFirstChild("Crates")
-        if CratesModule then
-            local crateScript = require(CratesModule)
-            if debug and debug.getupvalues then
-                local upvalues = debug.getupvalues(crateScript.Update)
-                for _, v in pairs(upvalues) do
-                    if type(v) == "table" and #v > 0 and type(v[1]) == "string" then
-                        -- ตรวจสอบว่าเป็น crate names (มักจะมี "Crate" ในชื่อ)
-                        if v[1]:find("Crate") then
-                            hiddenLists.Crates = v
-                            break
-                        end
-                    end
-                end
-            end
-        end
+        -- 🎯 ดึงแต่ละประเภท
+        hiddenLists.Accessories = SafeExtractList("Accessories", {"Ghost", "Pumpkin", "Tri"}, 3)
+        hiddenLists.Crates = SafeExtractList("Crates", {"Crate", "Spooky", "Perfect"}, 1)
+        hiddenLists.Secrets = SafeExtractList("Secrets", {"Bandito", "Sahur", "Tung", "Frappochino"}, 5)
         
-        -- 🔍 หา Secrets Hidden List
-        local SecretsModule = TradeController.Tradeables:FindFirstChild("Secrets")
-        if SecretsModule then
-            local secretScript = require(SecretsModule)
-            if debug and debug.getupvalues then
-                local upvalues = debug.getupvalues(secretScript.Update)
-                for _, v in pairs(upvalues) do
-                    if type(v) == "table" and #v > 0 and type(v[1]) == "string" then
-                        -- ตรวจสอบว่าเป็น secret names (มักจะมีชื่อยาวๆ แปลกๆ)
-                        if #v >= 5 and (v[1]:find("Bandito") or v[1]:find("Sahur") or v[1]:find("Tung")) then
-                            hiddenLists.Secrets = v
-                            break
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- 🔍 หา Pets Hidden List (ถ้ามี)
-        local PetsModule = TradeController.Tradeables:FindFirstChild("Pets")
-        if PetsModule then
-            local petScript = require(PetsModule)
-            if debug and debug.getupvalues then
-                local upvalues = debug.getupvalues(petScript.Update)
-                for _, v in pairs(upvalues) do
-                    if type(v) == "table" and #v > 0 and type(v[1]) == "string" then
-                        -- ตรวจสอบว่าเป็น pet names ที่ซ่อน
-                        if v[1]:find("I.N.D.E.X") or v[1]:find("Spooksy") or v[1]:find("Present") then
-                            hiddenLists.Pets = v
-                            break
-                        end
-                    end
-                end
-            end
+        -- Pets อาจไม่มี hidden list หรือมีแบบพิเศษ
+        local petsList = SafeExtractList("Pets", {"INDEX", "Spooksy", "Present"}, 3)
+        if #petsList > 0 then
+            hiddenLists.Pets = petsList
         end
     end)
     
     if not success then
-        warn("⚠️ Failed to extract hidden lists:", err)
+        warn("⚠️ ExtractHiddenLists error:", err)
     end
     
     return hiddenLists
