@@ -262,21 +262,10 @@ function TradeManager.ExecuteMagicDupe(recipe, statusLabel, amount, StateManager
             StateManager:SetStatus("🧪 Step 2: Injecting (T1 x" .. amount .. ")...", THEME.BtnDupe, statusLabel)
             sendUpdate({ amount, 1 })
         elseif StateManager.currentDupeTab == "Potions" then
-            local baits = {}
-            for _, req in ipairs(recipe.RequiredTiers) do 
-                baits[tonumber(req)] = 1 
-            end
-            local finalPayload = {}
-            for k, v in pairs(baits) do 
-                finalPayload[k] = v 
-            end
-            finalPayload[targetTier] = amount
-            
-            StateManager:SetStatus("⏳ Step 1: Baiting...", THEME.PlayerBtn, statusLabel)
-            sendUpdate(baits)
-            task.wait(WAIT_TIME)
-            StateManager:SetStatus("🧪 Step 2: Injecting...", THEME.BtnDupe, statusLabel)
-            sendUpdate(finalPayload)
+            -- [POTIONS: แก้ใหม่ตามที่คุณต้องการ - ส่งทีเดียวจบแบบ Array]
+            -- ลำดับคือ {Tier 1, Tier 2, Tier 3}
+            sendUpdate({1, 1, amount})
+            StateManager:SetStatus("✅ Potion Dupe Sent!", THEME.Success, statusLabel)
         else
             local availableBaits = {}
             if serviceData then
