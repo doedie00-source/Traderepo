@@ -278,8 +278,7 @@ function GUI:SwitchTab(tabName)
     if tabName == "Players" and self.Utils.IsTradeActive() then
         tabName = "Inventory"
         if self.StatusLabel then
-            self.StatusLabel.Text = "🔒 Trade active → Redirected to Inventory"
-            self.StatusLabel.TextColor3 = THEME.Warning
+            self.StateManager:SetStatus("Trade active → Redirected to Inventory", THEME.Warning, self.StatusLabel)
         end
     end
     
