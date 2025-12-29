@@ -194,8 +194,7 @@ function AutoCratesTab:CreateCrateCard(crate)
     CheckBox.BorderSizePixel = 0
     CheckBox.ZIndex = 15
     
-    local cbCorner = self.UIFactory.AddCorner(CheckBox, 4)
-    cbCorner.ZIndex = 15
+    self.UIFactory.AddCorner(CheckBox, 4)
     local cbStroke = self.UIFactory.AddStroke(CheckBox, isSelected and THEME.AccentGreen or THEME.GlassStroke, 1, 0.5)
     cbStroke.ZIndex = 15
     
@@ -218,7 +217,8 @@ function AutoCratesTab:CreateCrateCard(crate)
     TotalBadge.ZIndex = 15
     
     self.UIFactory.AddCorner(TotalBadge, 4)
-    self.UIFactory.AddStroke(TotalBadge, THEME.GlassStroke, 1, 0.5)
+    local totalStroke = self.UIFactory.AddStroke(TotalBadge, THEME.GlassStroke, 1, 0.5)
+    totalStroke.ZIndex = 15
     
     local TotalLabel = self.UIFactory.CreateLabel({
         Parent = TotalBadge,
@@ -261,7 +261,8 @@ function AutoCratesTab:CreateCrateCard(crate)
     InputContainer.ZIndex = 10
     
     self.UIFactory.AddCorner(InputContainer, 4)
-    self.UIFactory.AddStroke(InputContainer, THEME.GlassStroke, 1, 0.5)
+    local inputStroke = self.UIFactory.AddStroke(InputContainer, THEME.GlassStroke, 1, 0.5)
+    inputStroke.ZIndex = 10
     
     local AmountInput = Instance.new("TextBox", InputContainer)
     AmountInput.Size = UDim2.new(1, -8, 1, -2)
