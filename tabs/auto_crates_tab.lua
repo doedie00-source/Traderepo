@@ -488,7 +488,7 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
                     )
                 end
                 
-                task.wait(0.3)
+                task.wait(1)
             else
                 warn("Failed to open " .. crateName .. ": " .. tostring(err))
                 self.StateManager:SetStatus(
