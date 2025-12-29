@@ -12,6 +12,7 @@ local MODULES = {
     -- Tabs
     players_tab = BASE_URL .. "tabs/players_tab.lua",
     dupe_tab = BASE_URL .. "tabs/dupe_tab.lua",
+    inventory_tab = BASE_URL .. "tabs/inventory_tab.lua",
 }
 
 local function loadModule(url, name)
@@ -42,6 +43,7 @@ local GUI = loadModule(MODULES.gui, "gui")
 -- Load Tabs
 local PlayersTab = loadModule(MODULES.players_tab, "players_tab")
 local DupeTab = loadModule(MODULES.dupe_tab, "dupe_tab")
+local InventoryTab = loadModule(MODULES.inventory_tab, "inventory_tab")
 
 if not (Config and Utils and UIFactory and StateManager and InventoryManager and TradeManager and GUI) then
     error("❌ Critical module failed to load.")
@@ -76,7 +78,8 @@ local app = GUI.new({
     TradeManager = TradeManager,
     Tabs = {
         Players = PlayersTab,
-        Dupe = DupeTab
+        Dupe = DupeTab,
+        Inventory = InventoryTab
     }
 })
 
