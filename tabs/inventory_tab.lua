@@ -330,43 +330,154 @@ function InventoryTab:CreateItemCard(item, playerData)
             return 
         end
         
-        -- ✅ ห้าม add ถ้าสวมใส่อยู่
         if isEquipped then
             self.StateManager:SetStatus("🔒 Cannot trade equipped items!", THEME.Fail, self.StatusLabel)
             return
         end
         
-        -- ✅ FIX: Toggle logic
-        if isInTrade then
-            -- ลบออกจาก trade
-            local amount = (item.Category == "Crates") and (item.Amount or 1) or 1
-            
-            self.TradeManager.SendTradeSignal("Remove", {
-                Name = item.Name, 
-                Guid = item.UUID, 
-                Service = item.Service, 
-                Category = item.Category,
-                ElementData = item.ElementData,
-                RawInfo = item.Raw
-            }, amount, self.StatusLabel, self.StateManager, self.Utils)
+        -- ✅ FIX: Crates ใช้ Popup + Toggle
+        if item.Category == "Crates" then
+            if isInTrade then
+                -- คลิกครั้งที่ 2 → Remove ออก
+                local oldAmount = self.StateManager.itemsInTrade[key] and self.StateManager.itemsInTrade[key].Amount or item.Amount
+                
+                self.TradeManager.SendTradeSignal("Remove", {
+                    Name = item.Name,
+                    Service = item.Service,
+                    Category = item.Category
+                }, oldAmount, self.StatusLabel, self.StateManager, self.Utils)
+                
+            else
+                -- คลิกครั้งแรก → เปิด Popup
+                self:ShowQuantityPopup({Default = item.Amount, Max = item.Amount}, function(qty)
+                    self.TradeManager.SendTradeSignal("Add", {
+                        Name = item.Name,
+                        Service = item.Service,
+                        Category = item.Category
+                    }, qty, self.StatusLabel, self.StateManager, self.Utils)
+                    
+                    task.wait(0.1)
+                    self:RefreshInventory()
+                end)
+                return -- ไม่ refresh ตอนเปิด popup
+            end
             
         else
-            -- เพิ่มเข้า trade
-            local amount = (item.Category == "Crates") and (item.Amount or 1) or 1
-            
-            self.TradeManager.SendTradeSignal("Add", {
-                Name = item.Name, 
-                Guid = item.UUID, 
-                Service = item.Service, 
-                Category = item.Category,
-                ElementData = item.ElementData,
-                RawInfo = item.Raw
-            }, amount, self.StatusLabel, self.StateManager, self.Utils)
+            -- สำหรับ Pets, Accessories, Secrets (Toggle ธรรมดา)
+            if isInTrade then
+                local amount = 1
+                
+                self.TradeManager.SendTradeSignal("Remove", {
+                    Name = item.Name, 
+                    Guid = item.UUID, 
+                    Service = item.Service, 
+                    Category = item.Category,
+                    ElementData = item.ElementData,
+                    RawInfo = item.Raw
+                }, amount, self.StatusLabel, self.StateManager, self.Utils)
+                
+            else
+                local amount = 1
+                
+                self.TradeManager.SendTradeSignal("Add", {
+                    Name = item.Name, 
+                    Guid = item.UUID, 
+                    Service = item.Service, 
+                    Category = item.Category,
+                    ElementData = item.ElementData,
+                    RawInfo = item.Raw
+                }, amount, self.StatusLabel, self.StateManager, self.Utils)
+            end
         end
         
-        -- รีเฟรชทันที
         task.wait(0.1)
         self:RefreshInventory()
+    end)
+end
+
+function InventoryTab:ShowQuantityPopup(itemData, onConfirm)
+    local THEME = self.Config.THEME
+    
+    local PopupFrame = Instance.new("Frame", game:GetService("CoreGui"):FindFirstChild(self.Config.CONFIG.GUI_NAME))
+    PopupFrame.Size = UDim2.new(1, 0, 1, 0)
+    PopupFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+    PopupFrame.BackgroundTransparency = 0.3
+    PopupFrame.ZIndex = 3000
+    PopupFrame.BorderSizePixel = 0
+    
+    local popupBox = Instance.new("Frame", PopupFrame)
+    popupBox.Size = UDim2.new(0, 240, 0, 150)
+    popupBox.Position = UDim2.new(0.5, -120, 0.5, -75)
+    popupBox.BackgroundColor3 = THEME.GlassBg
+    popupBox.ZIndex = 3001
+    popupBox.BorderSizePixel = 0
+    
+    self.UIFactory.AddCorner(popupBox, 10)
+    self.UIFactory.AddStroke(popupBox, THEME.AccentPurple, 2, 0)
+    
+    local titleLabel = self.UIFactory.CreateLabel({
+        Parent = popupBox,
+        Text = "ENTER AMOUNT",
+        Size = UDim2.new(1, 0, 0, 38),
+        TextColor = THEME.TextWhite,
+        Font = Enum.Font.GothamBold,
+        TextSize = 13
+    })
+    titleLabel.ZIndex = 3002
+    
+    local input = Instance.new("TextBox", popupBox)
+    input.Size = UDim2.new(0.85, 0, 0, 34)
+    input.Position = UDim2.new(0.075, 0, 0.35, 0)
+    input.Text = tostring(itemData.Default or 1)
+    input.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    input.TextColor3 = THEME.TextWhite
+    input.Font = Enum.Font.Code
+    input.TextSize = 15
+    input.ClearTextOnFocus = false
+    input.ZIndex = 3002
+    input.BorderSizePixel = 0
+    
+    self.UIFactory.AddCorner(input, 6)
+    self.UIFactory.AddStroke(input, THEME.GlassStroke, 1, 0.5)
+    
+    local maxValue = itemData.Max or 999999
+    local inputConn = self.Utils.SanitizeNumberInput(input, maxValue)
+    
+    local function ClosePopup()
+        if inputConn then inputConn:Disconnect() end
+        if PopupFrame and PopupFrame.Parent then
+            PopupFrame:Destroy()
+        end
+    end
+    
+    local confirmBtn = self.UIFactory.CreateButton({
+        Size = UDim2.new(0.85, 0, 0, 34),
+        Position = UDim2.new(0.075, 0, 0.7, 0),
+        Text = "CONFIRM",
+        BgColor = THEME.AccentPurple,
+        CornerRadius = 6,
+        Parent = popupBox
+    })
+    confirmBtn.ZIndex = 3002
+    
+    local closeBtn = self.UIFactory.CreateButton({
+        Size = UDim2.new(0, 26, 0, 26),
+        Position = UDim2.new(1, -30, 0, 4),
+        Text = "✕",
+        BgColor = THEME.Fail,
+        CornerRadius = 6,
+        Parent = popupBox
+    })
+    closeBtn.ZIndex = 3002
+    
+    closeBtn.MouseButton1Click:Connect(ClosePopup)
+    
+    confirmBtn.MouseButton1Click:Connect(function()
+        local quantity = tonumber(input.Text)
+        if quantity and quantity > 0 and quantity <= maxValue then
+            ClosePopup()
+            onConfirm(quantity)
+        end
     end)
 end
 
