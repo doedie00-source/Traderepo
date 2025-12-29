@@ -662,8 +662,7 @@ function DupeTab:RenderPetDupeGrid()
         ["Mega Flame"] = true,
         ["Turbo Flame"] = true,
         ["Ultra Flame"] = true,
-        ["I2Pet"] = true,
-        ["Potato Salad"] = true
+        ["I2Pet"] = true
     }
     
     if not self.TooltipRef then
@@ -974,108 +973,12 @@ function DupeTab:OnDeletePets()
 end
 
 function DupeTab:OnEvolvePets()
-    local THEME = self.Config.THEME
-    local ReplicaListener = require(game:GetService("ReplicatedStorage").Packages.Knit).GetController("ReplicaListener")
-    local replica = ReplicaListener:GetReplica()
-    local myPets = replica and replica.Data.PetsService and replica.Data.PetsService.Pets or {}
-    
-    local selectedPetsData = {}
-    local count = 0
-    
-    for uuid, _ in pairs(self.StateManager.selectedPets) do
-        if myPets[uuid] then
-            table.insert(selectedPetsData, {UUID = uuid, Data = myPets[uuid]})
-            count = count + 1
-        end
-    end
-    
-    -- ✅ ตรวจสอบขั้นต่ำ
-    if count < 3 then
-        self.StateManager:SetStatus("⚠️ Need 3+ pets to evolve", THEME.Warning, self.StatusLabel)
-        return
-    end
-    
-    -- ✅ ตรวจสอบสูงสุด
-    if count > 9 then
-        self.StateManager:SetStatus("❌ Too many! Max 9 pets (unselect " .. (count - 9) .. ")", THEME.Fail, self.StatusLabel)
-        return
-    end
-    
-    -- ตรวจสอบชื่อเหมือนกัน
-    local firstPet = selectedPetsData[1].Data
-    local allSameName = true
-    
-    for i = 2, #selectedPetsData do
-        if selectedPetsData[i].Data.Name ~= firstPet.Name then
-            allSameName = false
-            break
-        end
-    end
-    
-    if not allSameName then
-        self.StateManager:SetStatus("❌ All pets must be the same type", THEME.Fail, self.StatusLabel)
-        return
-    end
-    
-    -- แยกตาม Evo Level
-    local evo0Count = 0
-    local evo1Count = 0
-    local hasEvo2 = false
-    
-    for _, pet in ipairs(selectedPetsData) do
-        local evo = pet.Data.Evolution or 0
-        if evo == 0 then
-            evo0Count = evo0Count + 1
-        elseif evo == 1 then
-            evo1Count = evo1Count + 1
-        elseif evo >= 2 then
-            hasEvo2 = true
-        end
-    end
-    
-    -- ห้าม Evo 2
-    if hasEvo2 then
-        self.StateManager:SetStatus("🚫 Cannot evolve Evo 2 pets", THEME.Fail, self.StatusLabel)
-        return
-    end
-    
-    -- ✅ ห้าม Evo 1 เกิน 3 ตัว
-    if evo1Count > 3 then
-        self.StateManager:SetStatus("⚠️ Evo 1 max 3 pets (unselect " .. (evo1Count - 3) .. ")", THEME.Warning, self.StatusLabel)
-        return
-    end
-    
-    -- คำนวณ
-    local evo1FromEvo0 = math.floor(evo0Count / 3)
-    local totalEvo1 = evo1Count + evo1FromEvo0
-    local canMakeEvo2 = (totalEvo1 >= 3)
-    
-    -- ตัดสินใจ
-    if canMakeEvo2 then
-        self.StateManager:SetStatus("🧬 Auto Evo to 2★...", THEME.AccentPurple, self.StatusLabel)
-        self.TradeManager.ExecuteAutoEvo2Star(
-            self.StatusLabel, 
-            function()
-                task.wait(0.6)
-                self.StateManager.selectedPets = {}
-                self:RefreshInventory()
-                self:UpdateEvoButtonState()
-            end, 
-            self.StateManager, 
-            self.Utils
-        )
-    else
-        self.StateManager:SetStatus("🔹 Evolving +1...", THEME.AccentBlue, self.StatusLabel)
-        self.TradeManager.ExecuteEvolution(
-            self.StatusLabel, 
-            function()
-                task.wait(0.6)
-                self.StateManager.selectedPets = {}
-                self:RefreshInventory()
-                self:UpdateEvoButtonState()
-            end, 
-            self.StateManager
-        )
+    if self.FloatingButtons.BtnEvoPet and self.FloatingButtons.BtnEvoPet:GetAttribute("IsValid") then
+        self.TradeManager.ExecuteEvolution(self.StatusLabel, function()
+            task.wait(0.6)
+            self:RefreshInventory()
+            self:UpdateEvoButtonState()
+        end, self.StateManager)
     end
 end
 
@@ -1087,7 +990,6 @@ function DupeTab:UpdateEvoButtonState()
     if not self.FloatingButtons.BtnEvoPet then return end
     
     local THEME = self.Config.THEME
-    local ReplicaListener = require(game:GetService("ReplicatedStorage").Packages.Knit).GetController("ReplicaListener")
     local replica = ReplicaListener:GetReplica()
     local myPets = replica and replica.Data.PetsService and replica.Data.PetsService.Pets or {}
     
@@ -1096,77 +998,47 @@ function DupeTab:UpdateEvoButtonState()
     
     for uuid, _ in pairs(self.StateManager.selectedPets) do
         if myPets[uuid] then
-            table.insert(selectedPetsData, {UUID = uuid, Data = myPets[uuid]})
+            table.insert(selectedPetsData, myPets[uuid])
             count = count + 1
         end
     end
     
-    local btnText = ""
+    local btnText = "EVOLVE (0/3)"
     local isValid = false
     
-    if count < 3 then
-        btnText = "SELECT 3+ (" .. count .. "/9)"
-        
-    -- ✅ เพิ่มเงื่อนไข: เกิน 9 ตัว
-    elseif count > 9 then
-        btnText = "❌ TOO MANY (" .. count .. "/9)"
-        
+    if count ~= 3 then
+        btnText = "SELECT 3 (" .. count .. "/3)"
     else
-        local firstPet = selectedPetsData[1].Data
+        local firstPet = selectedPetsData[1]
         local allSameName = true
+        local allSameEvo = true
+        local notMaxLevel = true
         
         for i = 2, #selectedPetsData do
-            if selectedPetsData[i].Data.Name ~= firstPet.Name then
+            if selectedPetsData[i].Name ~= firstPet.Name then
                 allSameName = false
-                break
             end
+            if (selectedPetsData[i].Evolution or 0) ~= (firstPet.Evolution or 0) then
+                allSameEvo = false
+            end
+        end
+        
+        if (firstPet.Evolution or 0) >= 2 then
+            notMaxLevel = false
         end
         
         if not allSameName then
-            btnText = "❌ MUST BE SAME PET"
+            btnText = "❌ MISMATCH NAME"
+        elseif not allSameEvo then
+            btnText = "❌ MISMATCH EVO"
+        elseif not notMaxLevel then
+            btnText = "🚫 MAX LEVEL"
         else
-            local evo0Count = 0
-            local evo1Count = 0
-            local hasEvo2 = false
-            
-            for _, pet in ipairs(selectedPetsData) do
-                local evo = pet.Data.Evolution or 0
-                if evo == 0 then 
-                    evo0Count = evo0Count + 1
-                elseif evo == 1 then 
-                    evo1Count = evo1Count + 1
-                elseif evo >= 2 then 
-                    hasEvo2 = true 
-                end
-            end
-            
-            if hasEvo2 then
-                btnText = "🚫 REMOVE EVO 2 PETS"
-                
-            else
-                local evo1FromEvo0 = math.floor(evo0Count / 3)
-                local totalEvo1 = evo1Count + evo1FromEvo0
-                
-                -- ✅ กรณี Evo 1 เกิน 3 ตัว
-                if evo1Count > 3 then
-                    btnText = "⚠️ UNSELECT " .. (evo1Count - 3) .. " EVO 1"
-                    
-                elseif totalEvo1 >= 3 then
-                    btnText = "🧬 AUTO→2★ (" .. count .. ")"
-                    isValid = true
-                    
-                elseif count >= 3 then
-                    btnText = "🔹 EVO+1 (" .. count .. ")"
-                    isValid = true
-                    
-                else
-                    btnText = "NEED MORE PETS"
-                end
-            end
+            btnText = "🧬 EVOLVE NOW"
+            isValid = true
         end
     end
     
-    -- ✅ อัพเดทปุ่ม
     self.FloatingButtons.BtnEvoPet.Text = btnText
     
     if isValid then
