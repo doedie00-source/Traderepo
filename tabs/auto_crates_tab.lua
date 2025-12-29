@@ -32,6 +32,7 @@ function AutoCratesTab.new(deps)
     self.CrateCards = {}
     self.IsProcessing = false
     self.ShouldStop = false
+    self.LockOverlay = nil -- ✅ สำหรับ Lock UI
     
     return self
 end
@@ -124,6 +125,29 @@ function AutoCratesTab:Init(parent)
     layout.CellPadding = UDim2.new(0, 6, 0, 6)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    -- ✅ สร้าง Lock Overlay (ซ่อนไว้ก่อน)
+    self.LockOverlay = Instance.new("Frame", parent)
+    self.LockOverlay.Name = "LockOverlay"
+    self.LockOverlay.Size = UDim2.new(1, 0, 1, -92)
+    self.LockOverlay.Position = UDim2.new(0, 0, 0, 90)
+    self.LockOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    self.LockOverlay.BackgroundTransparency = 0.7
+    self.LockOverlay.BorderSizePixel = 0
+    self.LockOverlay.ZIndex = 100
+    self.LockOverlay.Visible = false
+    
+    local lockLabel = self.UIFactory.CreateLabel({
+        Parent = self.LockOverlay,
+        Text = "🔒 Processing...\nCannot select/edit while opening",
+        Size = UDim2.new(0.8, 0, 0, 60),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        TextColor = THEME.TextWhite,
+        TextSize = 14,
+        Font = Enum.Font.GothamBold
+    })
+    lockLabel.ZIndex = 101
     
     self:RefreshInventory()
     self:UpdateInfoLabel()
@@ -316,15 +340,13 @@ function AutoCratesTab:CreateCrateCard(crate)
     end)
     
     self.CrateCards[crate.Name] = {
-        Card = Card, -- ✅ เก็บ Card reference ด้วย
         CheckBox = CheckBox,
         CheckMark = CheckMark,
         Input = AmountInput,
         Stroke = Stroke,
         CheckBoxStroke = cbStroke,
         MaxAmount = crate.Amount,
-        DefaultAmount = defaultAmount,
-        ClickBtn = ClickBtn
+        DefaultAmount = defaultAmount
     }
 end
 
@@ -439,22 +461,14 @@ function AutoCratesTab:StartAutoOpen()
     self.AutoOpenBtn.Text = "🛑 STOP OPEN"
     self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.Fail
     
+    -- ✅ แสดง Lock Overlay
+    if self.LockOverlay then
+        self.LockOverlay.Visible = true
+    end
+    
     -- ✅ Disable SELECT ALL button
     self.SelectAllBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     self.SelectAllBtn.TextColor3 = Color3.fromRGB(100, 100, 100)
-    
-    -- ✅ Disable การคลิกทุกการ์ด และทำให้โปร่งแสง
-    for _, cardData in pairs(self.CrateCards) do
-        if cardData.ClickBtn then
-            cardData.ClickBtn.Active = false
-        end
-        if cardData.Input then
-            cardData.Input.TextEditable = false
-        end
-        if cardData.Card then
-            cardData.Card.BackgroundTransparency = 0.5 -- ทำให้โปร่งแสงเพื่อบอกว่า Lock
-        end
-    end
     
     task.spawn(function()
         self:ProcessCrateOpening(selectedList)
@@ -577,22 +591,14 @@ function AutoCratesTab:ResetButton()
     self.AutoOpenBtn.Text = "🚀 START OPEN"
     self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.AccentGreen
     
+    -- ✅ ซ่อน Lock Overlay
+    if self.LockOverlay then
+        self.LockOverlay.Visible = false
+    end
+    
     -- ✅ Enable SELECT ALL button กลับ
     self:UpdateSelectButton()
     self.SelectAllBtn.TextColor3 = self.Config.THEME.TextWhite
-    
-    -- ✅ Enable การคลิกทุกการ์ดกลับ และคืนความโปร่งแสง
-    for _, cardData in pairs(self.CrateCards) do
-        if cardData.ClickBtn then
-            cardData.ClickBtn.Active = true
-        end
-        if cardData.Input then
-            cardData.Input.TextEditable = true
-        end
-        if cardData.Card then
-            cardData.Card.BackgroundTransparency = 0.2 -- คืนค่าปกติ
-        end
-    end
 end
 
 return AutoCratesTab
