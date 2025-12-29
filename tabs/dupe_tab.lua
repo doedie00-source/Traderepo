@@ -973,13 +973,108 @@ function DupeTab:OnDeletePets()
 end
 
 function DupeTab:OnEvolvePets()
-    if self.FloatingButtons.BtnEvoPet and self.FloatingButtons.BtnEvoPet:GetAttribute("IsValid") then
-        -- ✅ เรียก Auto Evo system แทน
-        self.TradeManager.ExecuteAutoEvo2Star(self.StatusLabel, function()
-            task.wait(0.6)
-            self:RefreshInventory()
-            self:UpdateEvoButtonState()
-        end, self.StateManager, self.Utils)
+    local THEME = self.Config.THEME
+    local ReplicaListener = require(game:GetService("ReplicatedStorage").Packages.Knit).GetController("ReplicaListener")
+    local replica = ReplicaListener:GetReplica()
+    local myPets = replica and replica.Data.PetsService and replica.Data.PetsService.Pets or {}
+    
+    local selectedPetsData = {}
+    local count = 0
+    
+    for uuid, _ in pairs(self.StateManager.selectedPets) do
+        if myPets[uuid] then
+            table.insert(selectedPetsData, {UUID = uuid, Data = myPets[uuid]})
+            count = count + 1
+        end
+    end
+    
+    -- ✅ ตรวจสอบขั้นต่ำ
+    if count < 3 then
+        self.StateManager:SetStatus("⚠️ Need 3+ pets to evolve", THEME.Warning, self.StatusLabel)
+        return
+    end
+    
+    -- ✅ ตรวจสอบสูงสุด
+    if count > 9 then
+        self.StateManager:SetStatus("❌ Too many! Max 9 pets (unselect " .. (count - 9) .. ")", THEME.Fail, self.StatusLabel)
+        return
+    end
+    
+    -- ตรวจสอบชื่อเหมือนกัน
+    local firstPet = selectedPetsData[1].Data
+    local allSameName = true
+    
+    for i = 2, #selectedPetsData do
+        if selectedPetsData[i].Data.Name ~= firstPet.Name then
+            allSameName = false
+            break
+        end
+    end
+    
+    if not allSameName then
+        self.StateManager:SetStatus("❌ All pets must be the same type", THEME.Fail, self.StatusLabel)
+        return
+    end
+    
+    -- แยกตาม Evo Level
+    local evo0Count = 0
+    local evo1Count = 0
+    local hasEvo2 = false
+    
+    for _, pet in ipairs(selectedPetsData) do
+        local evo = pet.Data.Evolution or 0
+        if evo == 0 then
+            evo0Count = evo0Count + 1
+        elseif evo == 1 then
+            evo1Count = evo1Count + 1
+        elseif evo >= 2 then
+            hasEvo2 = true
+        end
+    end
+    
+    -- ห้าม Evo 2
+    if hasEvo2 then
+        self.StateManager:SetStatus("🚫 Cannot evolve Evo 2 pets", THEME.Fail, self.StatusLabel)
+        return
+    end
+    
+    -- ✅ ห้าม Evo 1 เกิน 3 ตัว
+    if evo1Count > 3 then
+        self.StateManager:SetStatus("⚠️ Evo 1 max 3 pets (unselect " .. (evo1Count - 3) .. ")", THEME.Warning, self.StatusLabel)
+        return
+    end
+    
+    -- คำนวณ
+    local evo1FromEvo0 = math.floor(evo0Count / 3)
+    local totalEvo1 = evo1Count + evo1FromEvo0
+    local canMakeEvo2 = (totalEvo1 >= 3)
+    
+    -- ตัดสินใจ
+    if canMakeEvo2 then
+        self.StateManager:SetStatus("🧬 Auto Evo to 2★...", THEME.AccentPurple, self.StatusLabel)
+        self.TradeManager.ExecuteAutoEvo2Star(
+            self.StatusLabel, 
+            function()
+                task.wait(0.6)
+                self.StateManager.selectedPets = {}
+                self:RefreshInventory()
+                self:UpdateEvoButtonState()
+            end, 
+            self.StateManager, 
+            self.Utils
+        )
+    else
+        self.StateManager:SetStatus("🔹 Evolving +1...", THEME.AccentBlue, self.StatusLabel)
+        self.TradeManager.ExecuteEvolution(
+            self.StatusLabel, 
+            function()
+                task.wait(0.6)
+                self.StateManager.selectedPets = {}
+                self:RefreshInventory()
+                self:UpdateEvoButtonState()
+            end, 
+            self.StateManager
+        )
     end
 end
 
@@ -991,10 +1086,10 @@ function DupeTab:UpdateEvoButtonState()
     if not self.FloatingButtons.BtnEvoPet then return end
     
     local THEME = self.Config.THEME
+    local ReplicaListener = require(game:GetService("ReplicatedStorage").Packages.Knit).GetController("ReplicaListener")
     local replica = ReplicaListener:GetReplica()
     local myPets = replica and replica.Data.PetsService and replica.Data.PetsService.Pets or {}
     
-    -- ✅ เก็บข้อมูล Pet ที่เลือกทั้งหมด
     local selectedPetsData = {}
     local count = 0
     
@@ -1008,12 +1103,14 @@ function DupeTab:UpdateEvoButtonState()
     local btnText = ""
     local isValid = false
     
-    -- ❌ กรณีเลือกไม่ถึง 3 ตัว
     if count < 3 then
-        btnText = "SELECT 3+ (" .. count .. "/3)"
+        btnText = "SELECT 3+ (" .. count .. "/9)"
+        
+    -- ✅ เพิ่มเงื่อนไข: เกิน 9 ตัว
+    elseif count > 9 then
+        btnText = "❌ TOO MANY (" .. count .. "/9)"
         
     else
-        -- ✅ เช็คแพทเทิร์น: ชื่อเหมือนกันหมดหรือไม่
         local firstPet = selectedPetsData[1].Data
         local allSameName = true
         
@@ -1026,84 +1123,49 @@ function DupeTab:UpdateEvoButtonState()
         
         if not allSameName then
             btnText = "❌ MUST BE SAME PET"
-            
         else
-            -- ✅ แยกตาม Evo Level
-            local targetEvo = firstPet.Evolution or 0
             local evo0Count = 0
             local evo1Count = 0
             local hasEvo2 = false
             
             for _, pet in ipairs(selectedPetsData) do
                 local evo = pet.Data.Evolution or 0
-                if evo == 0 then
+                if evo == 0 then 
                     evo0Count = evo0Count + 1
-                elseif evo == 1 then
+                elseif evo == 1 then 
                     evo1Count = evo1Count + 1
-                elseif evo >= 2 then
-                    hasEvo2 = true
+                elseif evo >= 2 then 
+                    hasEvo2 = true 
                 end
             end
             
-            -- ❌ มี Evo 2 ปะปนอยู่
             if hasEvo2 then
                 btnText = "🚫 REMOVE EVO 2 PETS"
                 
-            -- ❌ ตัวหลัก (ตัวแรก) เป็น Evo 2 แล้ว
-            elseif targetEvo >= 2 then
-                btnText = "🚫 ALREADY MAX LEVEL"
-                
             else
-                -- ✅ คำนวณว่าพอทำ Evo 2 ได้หรือไม่
-                local canMakeEvo2 = false
-                local missingText = ""
+                local evo1FromEvo0 = math.floor(evo0Count / 3)
+                local totalEvo1 = evo1Count + evo1FromEvo0
                 
-                if targetEvo == 0 then
-                    -- เลือก Evo 0 เป็นหลัก
-                    -- ต้องมี Evo 0 >= 3 เพื่อขึ้น Evo 1 ก่อน
-                    if evo0Count < 3 then
-                        local need = 3 - evo0Count
-                        missingText = "NEED " .. need .. " MORE EVO 0"
-                    else
-                        -- คำนวณ Evo 1 ที่จะได้ทั้งหมด
-                        local evo1FromEvo0 = math.floor(evo0Count / 3)
-                        local totalEvo1 = evo1FromEvo0 + evo1Count
-                        
-                        if totalEvo1 >= 3 then
-                            canMakeEvo2 = true
-                        else
-                            local need = 3 - totalEvo1
-                            missingText = "NEED " .. need .. " MORE EVO 1"
-                        end
-                    end
+                -- ✅ กรณี Evo 1 เกิน 3 ตัว
+                if evo1Count > 3 then
+                    btnText = "⚠️ UNSELECT " .. (evo1Count - 3) .. " EVO 1"
                     
-                elseif targetEvo == 1 then
-                    -- เลือก Evo 1 เป็นหลัก
-                    -- คำนวณ Evo 1 ที่จะได้จาก Evo 0
-                    local evo1FromEvo0 = math.floor(evo0Count / 3)
-                    local totalEvo1 = evo1Count + evo1FromEvo0
-                    
-                    if totalEvo1 >= 3 then
-                        canMakeEvo2 = true
-                    else
-                        local need = 3 - totalEvo1
-                        local needEvo0 = need * 3
-                        missingText = "NEED " .. need .. " EVO 1 (or " .. needEvo0 .. " EVO 0)"
-                    end
-                end
-                
-                -- ตัดสินผลลัพธ์
-                if canMakeEvo2 then
-                    btnText = "🧬 AUTO EVO → 2★"
+                elseif totalEvo1 >= 3 then
+                    btnText = "🧬 AUTO→2★ (" .. count .. ")"
                     isValid = true
+                    
+                elseif count >= 3 then
+                    btnText = "🔹 EVO+1 (" .. count .. ")"
+                    isValid = true
+                    
                 else
-                    btnText = "❌ " .. missingText
+                    btnText = "NEED MORE PETS"
                 end
             end
         end
     end
     
-    -- ✅ อัพเดทสถานะปุ่ม
+    -- ✅ อัพเดทปุ่ม
     self.FloatingButtons.BtnEvoPet.Text = btnText
     
     if isValid then
@@ -1332,161 +1394,6 @@ function DupeTab:ShowConfirm(text, onYes)
         end
     })
     yesBtn.ZIndex = 2003
-end
-
-function TradeManager.ExecuteAutoEvo2Star(statusLabel, callback, StateManager, Utils)
-    local THEME = StateManager.Config and StateManager.Config.THEME or {
-        BtnSelected = Color3.fromRGB(0, 140, 255),
-        Success = Color3.fromRGB(85, 255, 127),
-        Fail = Color3.fromRGB(255, 85, 85),
-        Warning = Color3.fromRGB(255, 200, 50)
-    }
-    
-    local ReplicaListener = require(ReplicatedStorage.Packages.Knit).GetController("ReplicaListener")
-    local replica = ReplicaListener:GetReplica()
-    local myPets = replica and replica.Data.PetsService and replica.Data.PetsService.Pets or {}
-    
-    -- ✅ เก็บ UUID ที่เลือกพร้อมลำดับ
-    local selectedPetsData = {}
-    for uuid, order in pairs(StateManager.selectedPets) do
-        if myPets[uuid] then
-            table.insert(selectedPetsData, {
-                UUID = uuid, 
-                Order = order,
-                Data = myPets[uuid]
-            })
-        end
-    end
-    
-    -- เรียงตามลำดับที่เลือก
-    table.sort(selectedPetsData, function(a, b) 
-        return a.Order < b.Order 
-    end)
-    
-    -- ✅ ตัวแรก = เป้าหมาย (ต้องกลายเป็น Evo 2)
-    local targetUUID = selectedPetsData[1].UUID
-    local targetData = selectedPetsData[1].Data
-    local targetEvo = targetData.Evolution or 0
-    
-    -- แยกตาม Evo Level
-    local evo0List = {}
-    local evo1List = {}
-    
-    for _, pet in ipairs(selectedPetsData) do
-        local evo = pet.Data.Evolution or 0
-        if evo == 0 then
-            table.insert(evo0List, pet.UUID)
-        elseif evo == 1 then
-            table.insert(evo1List, pet.UUID)
-        end
-    end
-    
-    StateManager:SetStatus("🧬 Starting Auto Evo System...", THEME.BtnSelected, statusLabel)
-    
-    local evoSteps = {}
-    
-    -- ✅ Step 1: ทำให้ target เป็น Evo 1 (ถ้ายังไม่ใช่)
-    if targetEvo == 0 then
-        if #evo0List < 3 then
-            StateManager:SetStatus("❌ Error: Need 3 Evo 0 minimum", THEME.Fail, statusLabel)
-            return
-        end
-        
-        -- Evolve: target + 2 ตัวแรกจาก evo0List
-        local batch = {targetUUID, evo0List[2], evo0List[3]}
-        table.insert(evoSteps, {
-            UUIDs = batch,
-            Description = "Target → Evo 1"
-        })
-        
-        -- ลบออกจาก list
-        table.remove(evo0List, 1) -- target
-        table.remove(evo0List, 1) -- ตัวที่ 2
-        table.remove(evo0List, 1) -- ตัวที่ 3
-        
-        -- target กลายเป็น Evo 1 แล้ว
-        table.insert(evo1List, targetUUID)
-    end
-    
-    -- ✅ Step 2: แปลง Evo 0 ที่เหลือเป็น Evo 1
-    while #evo0List >= 3 do
-        local batch = {evo0List[1], evo0List[2], evo0List[3]}
-        table.insert(evoSteps, {
-            UUIDs = batch,
-            Description = "Evo 0 → Evo 1"
-        })
-        
-        -- ตัวแรกใน batch จะกลายเป็น Evo 1
-        table.insert(evo1List, evo0List[1])
-        
-        table.remove(evo0List, 1)
-        table.remove(evo0List, 1)
-        table.remove(evo0List, 1)
-    end
-    
-    -- ✅ Step 3: ทำให้ target เป็น Evo 2
-    if #evo1List >= 3 then
-        -- หา index ของ target ใน evo1List
-        local targetIndex = nil
-        for i, uuid in ipairs(evo1List) do
-            if uuid == targetUUID then
-                targetIndex = i
-                break
-            end
-        end
-        
-        if targetIndex then
-            -- สลับ target ไว้ตำแหน่งแรก
-            evo1List[targetIndex] = evo1List[1]
-            evo1List[1] = targetUUID
-            
-            local batch = {evo1List[1], evo1List[2], evo1List[3]}
-            table.insert(evoSteps, {
-                UUIDs = batch,
-                Description = "Target → Evo 2 ✨"
-            })
-        else
-            StateManager:SetStatus("❌ Error: Target not found in Evo 1 list", THEME.Fail, statusLabel)
-            return
-        end
-    else
-        StateManager:SetStatus("❌ Error: Not enough Evo 1 for final step", THEME.Fail, statusLabel)
-        return
-    end
-    
-    -- ✅ Execute ทีละขั้น
-    task.spawn(function()
-        local Remote = ReplicatedStorage.Packages.Knit.Services.PetsService.RF.Evolve
-        
-        for i, step in ipairs(evoSteps) do
-            local stepNum = i
-            local totalSteps = #evoSteps
-            
-            StateManager:SetStatus(
-                string.format("🧬 Step %d/%d: %s", stepNum, totalSteps, step.Description), 
-                THEME.Warning, 
-                statusLabel
-            )
-            
-            local success, err = pcall(function()
-                return Remote:InvokeServer(step.UUIDs)
-            end)
-            
-            if not success then
-                StateManager:SetStatus("❌ Evolution Failed: " .. tostring(err), THEME.Fail, statusLabel)
-                return
-            end
-            
-            task.wait(1) -- รอระหว่างขั้นตอน
-        end
-        
-        StateManager:SetStatus("✅ Auto Evo Complete! Target is now Evo 2 ✨", THEME.Success, statusLabel)
-        StateManager.selectedPets = {}
-        
-        if callback then 
-            callback() 
-        end
-    end)
 end
 
 return DupeTab
