@@ -1,5 +1,5 @@
 -- tabs/inventory_tab.lua
--- Hidden Inventory Tab (All Categories in One Page) - IMPROVED LOGIC
+-- Hidden Inventory Tab (All Categories in One Page) - FIXED VERSION
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -35,6 +35,7 @@ end
 function InventoryTab:Init(parent)
     local THEME = self.Config.THEME
     
+    -- Header
     self.UIFactory.CreateLabel({
         Parent = parent,
         Text = "💎 Hidden Treasures",
@@ -57,6 +58,7 @@ function InventoryTab:Init(parent)
         TextXAlign = Enum.TextXAlignment.Left
     })
 
+    -- Grid Container
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
         Size = UDim2.new(1, 0, 1, -50),
@@ -64,6 +66,7 @@ function InventoryTab:Init(parent)
         UseGrid = true 
     })
     
+    -- ตั้งค่า Grid ให้สวยเหมือนหน้า Dupe
     local layout = self.Container:FindFirstChild("UIGridLayout")
     if layout then
         layout.CellSize = UDim2.new(0, 92, 0, 115)
@@ -74,6 +77,7 @@ function InventoryTab:Init(parent)
 end
 
 function InventoryTab:RefreshInventory()
+    -- Clear old items
     for _, child in pairs(self.Container:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
@@ -84,143 +88,256 @@ function InventoryTab:RefreshInventory()
     local HIDDEN = self.Config.HIDDEN_LISTS
     local itemsToRender = {}
 
-    -- 1. เช็ค Pets
+    -- ✅ FIX 1: เช็ค Pets (เอาดาวและเลเวลมาด้วย)
     if playerData.PetsService and playerData.PetsService.Pets then
         for uuid, data in pairs(playerData.PetsService.Pets) do
             if self:CheckHidden(data.Name, HIDDEN.Pets) then
                 table.insert(itemsToRender, {
-                    Name = data.Name, UUID = uuid, Category = "Pets", Service = "PetsService", 
-                    Raw = data, Image = PetsInfo[data.Name] and PetsInfo[data.Name].Image
+                    Name = data.Name, 
+                    UUID = uuid, 
+                    Category = "Pets", 
+                    Service = "PetsService", 
+                    Raw = data, 
+                    Image = PetsInfo[data.Name] and PetsInfo[data.Name].Image
                 })
             end
         end
     end
 
-    -- 2. เช็ค Monsters (Secrets) - ตรรกะรองรับทั้ง String และ Table
-    if playerData.MonsterService and playerData.MonsterService.SavedMonsters then
-        for uuid, data in pairs(playerData.MonsterService.SavedMonsters) do
-            local mName = (type(data) == "table") and data.Name or data
-            local mRaw = (type(data) == "table") and data or {Name = mName} -- แปลงเป็น table เสมอเพื่อใช้ใน CreateCard
-            
-            if self:CheckHidden(mName, HIDDEN.Secrets) then
-                table.insert(itemsToRender, {
-                    Name = mName, UUID = uuid, Category = "Secrets", Service = "MonsterService", 
-                    Raw = mRaw, Image = MonsterInfo[mName] and MonsterInfo[mName].Image
-                })
+    -- ✅ FIX 2: เช็ค Monsters (ทั้ง SavedMonsters และ MonstersUnlocked)
+    if playerData.MonsterService then
+        -- เช็ค SavedMonsters (มี UUID)
+        if playerData.MonsterService.SavedMonsters then
+            for uuid, data in pairs(playerData.MonsterService.SavedMonsters) do
+                local mName = (type(data) == "table") and data.Name or data
+                if self:CheckHidden(mName, HIDDEN.Secrets) then
+                    table.insert(itemsToRender, {
+                        Name = mName, 
+                        UUID = uuid, 
+                        Category = "Secrets", 
+                        Service = "MonsterService",
+                        ElementData = "SavedMonsters",
+                        Raw = (type(data) == "table") and data or {Name = mName}, 
+                        Image = MonsterInfo[mName] and MonsterInfo[mName].Image
+                    })
+                end
+            end
+        end
+        
+        -- ✅ เพิ่ม: เช็ค MonstersUnlocked (ไม่มี UUID)
+        if playerData.MonsterService.MonstersUnlocked then
+            for _, mName in pairs(playerData.MonsterService.MonstersUnlocked) do
+                if self:CheckHidden(mName, HIDDEN.Secrets) then
+                    -- เช็คว่ายังไม่ได้เพิ่มไปแล้วจาก SavedMonsters
+                    local alreadyAdded = false
+                    for _, item in ipairs(itemsToRender) do
+                        if item.Category == "Secrets" and item.Name == mName and item.UUID then
+                            alreadyAdded = true
+                            break
+                        end
+                    end
+                    
+                    if not alreadyAdded then
+                        table.insert(itemsToRender, {
+                            Name = mName,
+                            UUID = nil, -- MonstersUnlocked ไม่มี UUID
+                            Category = "Secrets",
+                            Service = "MonsterService",
+                            ElementData = "MonstersUnlocked",
+                            Raw = {Name = mName},
+                            Image = MonsterInfo[mName] and MonsterInfo[mName].Image
+                        })
+                    end
+                end
             end
         end
     end
 
-    -- 3. เช็ค Accessories
+    -- ✅ FIX 3: เช็ค Accessories
     if playerData.AccessoryService and playerData.AccessoryService.Accessories then
         for uuid, data in pairs(playerData.AccessoryService.Accessories) do
             if self:CheckHidden(data.Name, HIDDEN.Accessories) then
                 table.insert(itemsToRender, {
-                    Name = data.Name, UUID = uuid, Category = "Accessories", Service = "AccessoryService", 
-                    Raw = data, Image = AccessoryInfo[data.Name] and AccessoryInfo[data.Name].Image
+                    Name = data.Name, 
+                    UUID = uuid, 
+                    Category = "Accessories", 
+                    Service = "AccessoryService", 
+                    Raw = data, 
+                    Image = AccessoryInfo[data.Name] and AccessoryInfo[data.Name].Image
                 })
             end
         end
     end
 
-    -- 4. เช็ค Crates
+    -- ✅ FIX 4: เช็ค Crates
     if playerData.CratesService and playerData.CratesService.Crates then
         for name, amount in pairs(playerData.CratesService.Crates) do
             if amount > 0 and self:CheckHidden(name, HIDDEN.Crates) then
                 table.insert(itemsToRender, {
-                    Name = name, Amount = amount, Category = "Crates", Service = "CratesService", 
+                    Name = name, 
+                    Amount = amount, 
+                    Category = "Crates", 
+                    Service = "CratesService", 
                     Image = CratesInfo[name] and CratesInfo[name].Image
                 })
             end
         end
     end
 
+    -- Render การ์ด
     for _, item in ipairs(itemsToRender) do
-        self:CreateItemCard(item)
+        self:CreateItemCard(item, playerData)
     end
 end
 
 function InventoryTab:CheckHidden(name, list)
     if not list then return false end
-    for _, h in pairs(list) do if h == name then return true end end
+    for _, h in pairs(list) do 
+        if h == name then return true end 
+    end
     return false
 end
 
-function InventoryTab:CreateItemCard(item)
+function InventoryTab:CreateItemCard(item, playerData)
     local THEME = self.Config.THEME
+    
+    -- ✅ FIX: เช็คสถานะสวมใส่
+    local isEquipped = false
+    if item.Category ~= "Crates" then
+        isEquipped = self.Utils.CheckIsEquipped(item.UUID, item.Name, item.Category, playerData)
+    end
+    
+    -- ✅ FIX: เช็คว่าอยู่ใน trade หรือไม่
+    local key = item.UUID or item.Name
+    local isInTrade = self.StateManager:IsInTrade(key)
+    
     local Card = Instance.new("Frame", self.Container)
     Card.BackgroundColor3 = THEME.CardBg
     Card.BackgroundTransparency = 0.2
+    Card.BorderSizePixel = 0
+    
     self.UIFactory.AddCorner(Card, 10)
-    self.UIFactory.AddStroke(Card, THEME.GlassStroke, 1, 0.5)
+    
+    -- ✅ FIX: เปลี่ยนสี stroke ตามสถานะ
+    local strokeColor = THEME.GlassStroke
+    local strokeThickness = 1
+    
+    if isInTrade then
+        strokeColor = THEME.Success
+        strokeThickness = 2
+    elseif isEquipped then
+        strokeColor = THEME.Fail
+        strokeThickness = 2
+    end
+    
+    self.UIFactory.AddStroke(Card, strokeColor, strokeThickness, 0.5)
 
     -- ไอคอน
     local icon = Instance.new("ImageLabel", Card)
-    icon.Size = UDim2.new(0, 62, 0, 62)
-    icon.Position = UDim2.new(0.5, -31, 0, 6)
+    icon.Size = UDim2.new(0, 60, 0, 60)
+    icon.Position = UDim2.new(0.5, -30, 0, 8)
     icon.BackgroundTransparency = 1
     icon.Image = "rbxassetid://" .. tostring(item.Image or 0)
     icon.ScaleType = Enum.ScaleType.Fit
+    
+    -- ✅ แสดง EQUIP tag ถ้าสวมใส่อยู่
+    if isEquipped then
+        local eqTag = Instance.new("TextLabel", Card)
+        eqTag.Text = "EQUIP"
+        eqTag.Size = UDim2.new(0, 42, 0, 12)
+        eqTag.Position = UDim2.new(1, -44, 0, 4)
+        eqTag.BackgroundTransparency = 1
+        eqTag.TextColor3 = THEME.Fail
+        eqTag.Font = Enum.Font.GothamBlack
+        eqTag.TextSize = 7
+        eqTag.TextXAlignment = Enum.TextXAlignment.Right
+    end
 
-    -- ✨ ตรรกะ Evolution (ดาว) สำหรับ Pet และ Monster
-    local evo = item.Raw and tonumber(item.Raw.Evolution) or 0
-    if evo > 0 then
+    -- ✨ แสดงดาว (Evolution) สำหรับ Pet/Monster
+    if item.Raw and item.Raw.Evolution and tonumber(item.Raw.Evolution) > 0 then
         local starContainer = Instance.new("Frame", Card)
-        starContainer.Size = UDim2.new(1, 0, 0, 14)
+        starContainer.Size = UDim2.new(1, 0, 0, 15)
         starContainer.Position = UDim2.new(0, 0, 0, 68)
         starContainer.BackgroundTransparency = 1
+        
         local layout = Instance.new("UIListLayout", starContainer)
         layout.FillDirection = Enum.FillDirection.Horizontal
         layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
         layout.Padding = UDim.new(0, -2)
 
-        for i = 1, evo do
+        for i = 1, tonumber(item.Raw.Evolution) do
             local s = Instance.new("ImageLabel", starContainer)
-            s.Size = UDim2.new(0, 13, 0, 13)
+            s.Size = UDim2.new(0, 12, 0, 12)
             s.BackgroundTransparency = 1
             s.Image = "rbxassetid://3926305904"
             s.ImageColor3 = THEME.StarColor or Color3.fromRGB(255, 215, 0)
         end
     end
 
-    -- ✨ ตรรกะ Level และสถานะ Shiny/Golden
-    local lv = (item.Raw and item.Raw.Level) and (" [Lv."..item.Raw.Level.."]") or ""
-    local shiny = (item.Raw and (item.Raw.Shiny or item.Raw.Golden)) and " ✨" or ""
+    -- ชื่อและเลเวล
+    local levelText = (item.Raw and item.Raw.Level) and (" [Lv."..item.Raw.Level.."]") or ""
+    local amountText = (item.Amount and item.Amount > 1) and (" x"..item.Amount) or ""
     
     local nameLbl = self.UIFactory.CreateLabel({
         Parent = Card,
-        Text = item.Name .. lv .. shiny,
-        Size = UDim2.new(1, -8, 0, 30),
-        Position = UDim2.new(0, 4, 1, -35),
+        Text = item.Name .. levelText .. amountText,
+        Size = UDim2.new(1, -8, 0, 25),
+        Position = UDim2.new(0, 4, 1, -30),
         TextSize = 9,
         Font = Enum.Font.GothamBold,
-        TextColor = THEME.TextWhite
+        TextColor = isInTrade and THEME.Success or THEME.TextWhite
     })
     nameLbl.TextWrapped = true
 
-    -- จำนวน (สำหรับ Crates)
-    if item.Amount then
-        local amt = self.UIFactory.CreateLabel({
-            Parent = Card,
-            Text = "x"..item.Amount,
-            Size = UDim2.new(0, 40, 0, 16),
-            Position = UDim2.new(1, -42, 0, 4),
-            TextColor = THEME.AccentBlue,
-            Font = Enum.Font.Code,
-            TextSize = 10
-        })
-    end
-
+    -- ✅ FIX: ปุ่มส่ง (รองรับ toggle)
     local btn = Instance.new("TextButton", Card)
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.BackgroundTransparency = 1
     btn.Text = ""
+    
     btn.MouseButton1Click:Connect(function()
-        if not self.Utils.IsTradeActive() then return end
-        self.TradeManager.SendTradeSignal("Add", {
-            Name = item.Name, Guid = item.UUID, Service = item.Service, Category = item.Category, RawInfo = item.Raw
-        }, 1, self.StatusLabel, self.StateManager, self.Utils)
-        self.UIFactory.AddStroke(Card, THEME.Success, 2, 0)
+        if not self.Utils.IsTradeActive() then 
+            self.StateManager:SetStatus("⚠️ Trade Menu NOT open!", THEME.Fail, self.StatusLabel)
+            return 
+        end
+        
+        -- ✅ ห้าม add ถ้าสวมใส่อยู่
+        if isEquipped then
+            self.StateManager:SetStatus("🔒 Cannot trade equipped items!", THEME.Fail, self.StatusLabel)
+            return
+        end
+        
+        -- ✅ FIX: Toggle logic
+        if isInTrade then
+            -- ลบออกจาก trade
+            local amount = (item.Category == "Crates") and (item.Amount or 1) or 1
+            
+            self.TradeManager.SendTradeSignal("Remove", {
+                Name = item.Name, 
+                Guid = item.UUID, 
+                Service = item.Service, 
+                Category = item.Category,
+                ElementData = item.ElementData,
+                RawInfo = item.Raw
+            }, amount, self.StatusLabel, self.StateManager, self.Utils)
+            
+        else
+            -- เพิ่มเข้า trade
+            local amount = (item.Category == "Crates") and (item.Amount or 1) or 1
+            
+            self.TradeManager.SendTradeSignal("Add", {
+                Name = item.Name, 
+                Guid = item.UUID, 
+                Service = item.Service, 
+                Category = item.Category,
+                ElementData = item.ElementData,
+                RawInfo = item.Raw
+            }, amount, self.StatusLabel, self.StateManager, self.Utils)
+        end
+        
+        -- รีเฟรชทันที
+        task.wait(0.1)
+        self:RefreshInventory()
     end)
 end
 
