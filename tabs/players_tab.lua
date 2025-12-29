@@ -140,20 +140,38 @@ function PlayersTab:RefreshList()
             tradeBtn:SetAttribute("OriginalColor", THEME.AccentPurple)
             tradeBtn:SetAttribute("OriginalTextColor", THEME.TextWhite)
             
+            -- คัดลอกตั้งแต่ท่อนนี้ไปวางแทนของเก่าได้เลยครับ
             tradeBtn.MouseButton1Click:Connect(function()
                 if self.Utils.IsTradeActive() then
                     self.StateManager:SetStatus("🔒 Trade is active! Finish it first", THEME.Fail, self.StatusLabel)
                     return
                 end
+                
+                -- 1. สั่งเริ่มเทรด
                 self.TradeManager.ForceTradeWith(plr, self.StatusLabel, self.StateManager, self.Utils)
-            end)
+                
+                -- 2. เพิ่มโค้ดเช็คเพื่อสลับหน้า (วาร์ปหน้า)
+                task.spawn(function()
+                    local timer = 0
+                    while timer < 10 do -- เช็คซ้ำๆ เป็นเวลา 5 วินาที
+                        if self.Utils.IsTradeActive() then
+                            if _G.ModernGUI then 
+                                _G.ModernGUI:SwitchTab("Inventory") -- สั่งเปลี่ยนหน้า
+                            end
+                            break -- เจอแล้วให้หยุดเช็ค
+                        end
+                        timer = timer + 1
+                        task.wait(0.5)
+                    end
+                end)
+            end) -- <--- จบฟังก์ชันปุ่มกด
             
             count = count + 1
-        end
-    end
+        end -- <--- จบ if plr ~= LocalPlayer
+    end -- <--- จบ for loop (วนลูปผู้เล่น)
     
     self.Container.CanvasSize = UDim2.new(0, 0, 0, count * 62)
-end
+end -- <--- จบฟังก์ชัน RefreshList
 
 function PlayersTab:UpdateButtonStates()
     local THEME = self.Config.THEME
