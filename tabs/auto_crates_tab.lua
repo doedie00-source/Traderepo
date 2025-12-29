@@ -328,6 +328,9 @@ function AutoCratesTab:CreateCrateCard(crate)
 end
 
 function AutoCratesTab:ToggleSelectAll()
+    -- ป้องกันการกดเมื่อกำลัง Process
+    if self.IsProcessing then return end
+    
     if self:AreAllSelected() then
         self:DeselectAll()
     else
@@ -435,6 +438,10 @@ function AutoCratesTab:StartAutoOpen()
     self.AutoOpenBtn.Text = "🛑 STOP OPEN"
     self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.Fail
     
+    -- ✅ Disable SELECT ALL button
+    self.SelectAllBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    self.SelectAllBtn.TextColor3 = Color3.fromRGB(100, 100, 100)
+    
     task.spawn(function()
         self:ProcessCrateOpening(selectedList)
     end)
@@ -464,6 +471,10 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
         local targetAmount = crateData.Amount
         local opened = 0
         
+        -- ดึง Input reference
+        local cardData = self.CrateCards[crateName]
+        if not cardData then continue end
+        
         self.StateManager:SetStatus(
             string.format("🎁 Opening %s... (%d/%d)", crateName, typeIndex, totalTypes),
             THEME.AccentBlue,
@@ -484,13 +495,20 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
                 opened = opened + batchSize
                 totalOpened = totalOpened + batchSize
                 
+                -- ✅ อัพเดท countdown ใน Input
+                local remainingAmount = targetAmount - opened
+                if cardData.Input then
+                    cardData.Input.Text = tostring(remainingAmount)
+                end
+                
                 if self.InfoLabel then
                     self.InfoLabel.Text = string.format(
-                        "✅ Opened: %d | %s: %d/%d",
+                        "✅ Opened: %d | %s: %d/%d (Left: %d)",
                         totalOpened,
                         crateName,
                         opened,
-                        targetAmount
+                        targetAmount,
+                        remainingAmount
                     )
                 end
                 
@@ -506,7 +524,14 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
             end
         end
         
+        -- เคลียร์รายการที่เปิดเสร็จแล้ว
         self.SelectedCrates[crateName] = nil
+        
+        -- ✅ รีเซ็ต Input กลับเป็นค่าเริ่มต้น
+        if cardData.Input then
+            cardData.Input.Text = "0"
+        end
+        
         task.wait(0.2)
     end
     
@@ -537,6 +562,10 @@ function AutoCratesTab:ResetButton()
     self.ShouldStop = false
     self.AutoOpenBtn.Text = "🚀 START OPEN"
     self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.AccentGreen
+    
+    -- ✅ Enable SELECT ALL button กลับ
+    self:UpdateSelectButton()
+    self.SelectAllBtn.TextColor3 = self.Config.THEME.TextWhite
 end
 
 return AutoCratesTab
