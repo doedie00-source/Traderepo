@@ -60,7 +60,7 @@ function AutoCratesTab:Init(parent)
     self:BuildTrashDatabase()
     
     local header = Instance.new("Frame", parent)
-    header.Size = UDim2.new(1, 0, 0, 120) -- เพิ่มความสูงเพื่อรองรับปุ่มใหม่
+    header.Size = UDim2.new(1, 0, 0, 120)
     header.BackgroundTransparency = 1
     
     self.UIFactory.CreateLabel({
@@ -108,7 +108,7 @@ function AutoCratesTab:Init(parent)
 
     self.AutoOpenBtn = self.UIFactory.CreateButton({
         Parent = btnContainer1,
-        Text = "🚀 START OPEN",
+        Text = "START OPEN",
         Size = UDim2.new(0, 160, 0, 32),
         BgColor = THEME.CardBg,
         TextSize = 12,
@@ -129,7 +129,7 @@ function AutoCratesTab:Init(parent)
     
     self.AutoDeleteBtn = self.UIFactory.CreateButton({
         Parent = btnContainer2,
-        Text = "🗑️ AUTO DELETE: OFF",
+        Text = "AUTO DELETE: OFF",
         Size = UDim2.new(0, 200, 0, 32),
         BgColor = THEME.CardBg,
         TextColor = THEME.TextGray,
@@ -142,7 +142,7 @@ function AutoCratesTab:Init(parent)
     -- Status Label สำหรับแสดงจำนวน Accessories
     self.AccessoryStatusLabel = self.UIFactory.CreateLabel({
         Parent = btnContainer2,
-        Text = "📦 Loading...",
+        Text = "Loading...",
         Size = UDim2.new(0, 240, 0, 32),
         TextColor = THEME.TextDim,
         TextSize = 11,
@@ -840,7 +840,8 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
                     )
                 end
                 
-                task.wait(1)
+                local randomWait = math.random(100, 220) / 100 
+                task.wait(randomWait)
             else
                 warn("Failed to open " .. crateName .. ": " .. tostring(err))
                 self.StateManager:SetStatus(
@@ -848,6 +849,7 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
                     THEME.Warning,
                     self.StatusLabel
                 )
+                task.wait(2)
                 break
             end
         end
@@ -914,7 +916,7 @@ function AutoCratesTab:ResetButton()
     self.ShouldStop = false
     local THEME = self.Config.THEME
     
-    self.AutoOpenBtn.Text = "🚀 START OPEN"
+    self.AutoOpenBtn.Text = "START OPEN"
     self.AutoOpenBtn.TextColor3 = THEME.TextWhite
     self.AutoOpenBtn.BackgroundColor3 = THEME.CardBg 
     
