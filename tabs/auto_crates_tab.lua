@@ -79,13 +79,15 @@ function AutoCratesTab:Init(parent)
         Parent = btnContainer,
         Text = "✓ SELECT ALL",
         Size = UDim2.new(0, 140, 0, 32),
-        BgColor = THEME.AccentBlue,
+        BgColor = THEME.CardBg, -- ใช้สีพื้นหลัง UI
         TextSize = 11,
         Font = Enum.Font.GothamBold,
         CornerRadius = 6
     })
-    self.UIFactory.AddStroke(self.SelectAllBtn, Color3.fromRGB(140, 160, 255), 1, 0.4)
     
+    -- ใส่ Stroke ให้ปุ่ม Select All
+    self.SelectAllBtnStroke = self.UIFactory.AddStroke(self.SelectAllBtn, THEME.AccentBlue, 1.5, 0.4)
+
     self.AutoOpenBtn = self.UIFactory.CreateButton({
         Parent = btnContainer,
         Text = "🚀 START OPEN",
@@ -394,12 +396,30 @@ function AutoCratesTab:AreAllSelected()
 end
 
 function AutoCratesTab:UpdateSelectButton()
+    local THEME = self.Config.THEME
+    
     if self:AreAllSelected() then
+        -- 🟥 สถานะ: กดเพื่อล้าง (Unselect All)
         self.SelectAllBtn.Text = "X UNSELECT ALL"
-        self.SelectAllBtn.BackgroundColor3 = self.Config.THEME.BtnDefault
+        self.SelectAllBtn.TextColor3 = THEME.Fail -- ข้อความสีแดงอ่อน
+        if self.SelectAllBtnStroke then
+            self.SelectAllBtnStroke.Color = THEME.Fail -- ขอบสีแดง
+        end
     else
+        -- 🟦 สถานะ: กดเพื่อเลือกทั้งหมด (Select All)
         self.SelectAllBtn.Text = "✓ SELECT ALL"
-        self.SelectAllBtn.BackgroundColor3 = self.Config.THEME.AccentBlue
+        self.SelectAllBtn.TextColor3 = THEME.TextWhite -- ข้อความสีขาว
+        if self.SelectAllBtnStroke then
+            self.SelectAllBtnStroke.Color = THEME.AccentBlue -- ขอบสีฟ้าธีมหลัก
+        end
+    end
+    
+    -- ✅ ป้องกันการกดตอนกำลังรันงาน (Disabled Look)
+    if self.IsProcessing then
+        self.SelectAllBtn.TextColor3 = Color3.fromRGB(100, 100, 100)
+        if self.SelectAllBtnStroke then
+            self.SelectAllBtnStroke.Color = Color3.fromRGB(60, 60, 60)
+        end
     end
 end
 
@@ -637,24 +657,18 @@ function AutoCratesTab:ResetButton()
     self.ShouldStop = false
     local THEME = self.Config.THEME
     
-    -- 🎨 คืนค่าสีพื้นฐาน
+    -- คืนค่าปุ่ม Start
     self.AutoOpenBtn.Text = "🚀 START OPEN"
     self.AutoOpenBtn.TextColor3 = THEME.TextWhite
-    self.AutoOpenBtn.BackgroundColor3 = THEME.CardBg -- คืนค่าสีมืด
-    
     if self.AutoOpenBtnStroke then
-        self.AutoOpenBtnStroke.Color = THEME.AccentBlue -- คืนค่าสีขอบเป็นสีฟ้า
+        self.AutoOpenBtnStroke.Color = THEME.AccentBlue
     end
     
-    -- ปรับปรุง LockOverlay ให้ดูซอฟต์ลง (ถ้ามี)
     if self.LockOverlay then
         self.LockOverlay.Visible = false
     end
     
-    -- จัดการปุ่ม Select All ให้เข้าธีม
-    self.SelectAllBtn.BackgroundColor3 = THEME.CardBg
-    self.SelectAllBtn.TextColor3 = THEME.TextWhite
+    -- ✅ อัพเดทสีปุ่ม Select All ให้กลับมาปกติ
     self:UpdateSelectButton()
 end
-
 return AutoCratesTab
