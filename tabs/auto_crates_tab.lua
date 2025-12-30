@@ -126,32 +126,32 @@ function AutoCratesTab:Init(parent)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     
-    -- ✅ สร้าง Lock Overlay (ซ่อนไว้ก่อน)
+    self:RefreshInventory()
+    self:UpdateInfoLabel()
+    self:UpdateSelectButton()
+    
+    -- ✅ สร้าง Lock Overlay หลังสุด (ซ่อนไว้ก่อน)
     self.LockOverlay = Instance.new("Frame", parent)
     self.LockOverlay.Name = "LockOverlay"
     self.LockOverlay.Size = UDim2.new(1, 0, 1, -92)
     self.LockOverlay.Position = UDim2.new(0, 0, 0, 90)
     self.LockOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    self.LockOverlay.BackgroundTransparency = 0.7
+    self.LockOverlay.BackgroundTransparency = 0.6
     self.LockOverlay.BorderSizePixel = 0
-    self.LockOverlay.ZIndex = 100
+    self.LockOverlay.ZIndex = 1000
     self.LockOverlay.Visible = false
     
     local lockLabel = self.UIFactory.CreateLabel({
         Parent = self.LockOverlay,
         Text = "🔒 Processing...\nCannot select/edit while opening",
-        Size = UDim2.new(0.8, 0, 0, 60),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
+        Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
         TextColor = THEME.TextWhite,
-        TextSize = 14,
+        TextSize = 16,
         Font = Enum.Font.GothamBold
     })
-    lockLabel.ZIndex = 101
-    
-    self:RefreshInventory()
-    self:UpdateInfoLabel()
-    self:UpdateSelectButton()
+    lockLabel.ZIndex = 1001
+    lockLabel.TextWrapped = true
 end
 
 function AutoCratesTab:RefreshInventory()
