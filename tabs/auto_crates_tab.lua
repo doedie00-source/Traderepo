@@ -567,13 +567,42 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
         end
         
         -- เคลียร์รายการที่เปิดเสร็จแล้ว
-        self.SelectedCrates[crateName] = nil
-        
-        -- ✅ รีเซ็ต Input กลับเป็นค่าเริ่มต้น
-        if cardData.Input then
-            cardData.Input.Text = "0"
+        local remaining = targetAmount - opened
+
+        if remaining > 0 then
+            -- 1. ถ้าของยังเหลือ (กด Stop หรือ Error): อัพเดทค่าที่เหลือใส่ระบบ แล้วข้ามการ Unselect ไปเลย
+            self.SelectedCrates[crateName] = remaining
+            
+            if cardData.Input then
+                cardData.Input.Text = tostring(remaining) -- คงเลขที่เหลือไว้
+            end
+        else
+            -- 2. ถ้าเปิดครบจนหมด (เหลือ 0): ค่อยสั่ง Unselect และรีเซตการ์ด
+            self.SelectedCrates[crateName] = nil
+            
+            -- รีเซตหน้าตาการ์ด (เอาขอบเขียวออก)
+            local THEME = self.Config.THEME
+            if cardData.Stroke then 
+                cardData.Stroke.Color = THEME.GlassStroke 
+                cardData.Stroke.Thickness = 1
+            end
+            if cardData.CheckBox then 
+                cardData.CheckBox.BackgroundColor3 = Color3.fromRGB(30, 30, 35) 
+            end
+            if cardData.CheckMark then 
+                cardData.CheckMark.Text = "" 
+            end
+            if cardData.CheckBoxStroke then 
+                cardData.CheckBoxStroke.Color = THEME.GlassStroke 
+            end
+            
+            -- รีเซตตัวเลขเป็นค่า Default (เพื่อให้พร้อมกดเลือกใหม่ในรอบหน้า)
+            if cardData.Input then
+                cardData.Input.Text = tostring(cardData.DefaultAmount or 1)
+            end
         end
-        
+        -- ✅✅✅ จบโค้ดใหม่
+
         task.wait(0.2)
     end
     
