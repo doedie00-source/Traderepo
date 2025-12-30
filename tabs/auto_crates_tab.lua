@@ -1,5 +1,5 @@
 -- tabs/auto_crates_tab.lua
--- Auto Open Crates Tab - ปรับปรุง UI (การ์ดเล็กลง, Toggle Select, Start/Stop)
+-- Auto Open Crates Tab + Auto Delete Accessories
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,6 +15,18 @@ if not SuccessLoadCrates then CratesInfo = {} end
 
 local AutoCratesTab = {}
 AutoCratesTab.__index = AutoCratesTab
+
+-- ⚙️ Auto Delete Configuration
+local AUTO_DELETE_CONFIG = {
+    MAX_ACCESSORIES = 200,
+    SAFE_THRESHOLD = 16,  -- ลบเมื่อเหลือช่องว่าง <= 16
+    BATCH_SIZE = 8,       -- เปิดทีละ 8 กล่อง
+    EXCEPTION_LIST = {
+        ["Tri Ton"] = true,
+        ["Meowl Head"] = true,
+        ["Ashen Charm"] = true
+    }
+}
 
 function AutoCratesTab.new(deps)
     local self = setmetatable({}, AutoCratesTab)
@@ -32,7 +44,11 @@ function AutoCratesTab.new(deps)
     self.CrateCards = {}
     self.IsProcessing = false
     self.ShouldStop = false
-    self.LockOverlay = nil -- ✅ สำหรับ Lock UI
+    self.LockOverlay = nil
+    
+    -- ✅ Auto Delete State
+    self.AutoDeleteEnabled = false
+    self.TrashNamesList = {}  -- รายชื่อ Accessories ที่เป็นขยะ (Item 1-4)
     
     return self
 end
@@ -40,8 +56,11 @@ end
 function AutoCratesTab:Init(parent)
     local THEME = self.Config.THEME
     
+    -- สร้างฐานข้อมูลขยะ
+    self:BuildTrashDatabase()
+    
     local header = Instance.new("Frame", parent)
-    header.Size = UDim2.new(1, 0, 0, 88)
+    header.Size = UDim2.new(1, 0, 0, 120) -- เพิ่มความสูงเพื่อรองรับปุ่มใหม่
     header.BackgroundTransparency = 1
     
     self.UIFactory.CreateLabel({
@@ -66,48 +85,79 @@ function AutoCratesTab:Init(parent)
         TextXAlign = Enum.TextXAlignment.Left
     })
     
-    local btnContainer = Instance.new("Frame", header)
-    btnContainer.Size = UDim2.new(1, -8, 0, 32)
-    btnContainer.Position = UDim2.new(0, 8, 0, 42)
-    btnContainer.BackgroundTransparency = 1
+    -- บรรทัดที่ 1: Select All + Start/Stop
+    local btnContainer1 = Instance.new("Frame", header)
+    btnContainer1.Size = UDim2.new(1, -8, 0, 32)
+    btnContainer1.Position = UDim2.new(0, 8, 0, 42)
+    btnContainer1.BackgroundTransparency = 1
     
-    local btnLayout = Instance.new("UIListLayout", btnContainer)
-    btnLayout.FillDirection = Enum.FillDirection.Horizontal
-    btnLayout.Padding = UDim.new(0, 8)
+    local btnLayout1 = Instance.new("UIListLayout", btnContainer1)
+    btnLayout1.FillDirection = Enum.FillDirection.Horizontal
+    btnLayout1.Padding = UDim.new(0, 8)
     
     self.SelectAllBtn = self.UIFactory.CreateButton({
-        Parent = btnContainer,
+        Parent = btnContainer1,
         Text = "SELECT ALL",
         Size = UDim2.new(0, 140, 0, 32),
-        BgColor = THEME.CardBg, -- ✅ เปลี่ยน: ใช้สีเดียวกับปุ่ม Start (เดิมเป็นสีมืด)
-        TextSize = 12,          -- ✅ เปลี่ยน: ขนาด 12 เท่าปุ่ม Start (เดิม 11)
-        Font = Enum.Font.GothamBold, -- ✅ เปลี่ยน: ใช้ตัวหนาเท่าปุ่ม Start (เดิม Medium)
+        BgColor = THEME.CardBg,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
         CornerRadius = 6
     })
-    
-    -- ✅ เปลี่ยน: ปรับขนาดเส้นขอบ (Thickness 1.5) และความชัด (0.4) ให้เท่าปุ่ม Start
     self.SelectAllBtnStroke = self.UIFactory.AddStroke(self.SelectAllBtn, THEME.AccentBlue, 1.5, 0.4)
 
     self.AutoOpenBtn = self.UIFactory.CreateButton({
-        Parent = btnContainer,
-        Text = "START OPEN",
+        Parent = btnContainer1,
+        Text = "🚀 START OPEN",
         Size = UDim2.new(0, 160, 0, 32),
         BgColor = THEME.CardBg,
         TextSize = 12,
         Font = Enum.Font.GothamBold,
         CornerRadius = 6
     })
-    -- ใส่ขอบสีฟ้า/น้ำเงินตามธีมหลักให้ดูโมเดิร์น
-    local BtnStroke = self.UIFactory.AddStroke(self.AutoOpenBtn, THEME.AccentBlue, 1.5, 0.4)
-    self.AutoOpenBtnStroke = BtnStroke -- เก็บไว้เปลี่ยนสีตอน Stop
+    self.AutoOpenBtnStroke = self.UIFactory.AddStroke(self.AutoOpenBtn, THEME.AccentBlue, 1.5, 0.4)
+
+    -- ✅ บรรทัดที่ 2: Auto Delete Toggle + Status
+    local btnContainer2 = Instance.new("Frame", header)
+    btnContainer2.Size = UDim2.new(1, -8, 0, 32)
+    btnContainer2.Position = UDim2.new(0, 8, 0, 82)
+    btnContainer2.BackgroundTransparency = 1
+    
+    local btnLayout2 = Instance.new("UIListLayout", btnContainer2)
+    btnLayout2.FillDirection = Enum.FillDirection.Horizontal
+    btnLayout2.Padding = UDim.new(0, 8)
+    
+    self.AutoDeleteBtn = self.UIFactory.CreateButton({
+        Parent = btnContainer2,
+        Text = "🗑️ AUTO DELETE: OFF",
+        Size = UDim2.new(0, 200, 0, 32),
+        BgColor = THEME.CardBg,
+        TextColor = THEME.TextGray,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        CornerRadius = 6
+    })
+    self.AutoDeleteBtnStroke = self.UIFactory.AddStroke(self.AutoDeleteBtn, THEME.GlassStroke, 1.5, 0.5)
+    
+    -- Status Label สำหรับแสดงจำนวน Accessories
+    self.AccessoryStatusLabel = self.UIFactory.CreateLabel({
+        Parent = btnContainer2,
+        Text = "📦 Loading...",
+        Size = UDim2.new(0, 240, 0, 32),
+        TextColor = THEME.TextDim,
+        TextSize = 11,
+        Font = Enum.Font.GothamMedium,
+        TextXAlign = Enum.TextXAlignment.Left
+    })
 
     self.SelectAllBtn.MouseButton1Click:Connect(function() self:ToggleSelectAll() end)
     self.AutoOpenBtn.MouseButton1Click:Connect(function() self:ToggleAutoOpen() end)
+    self.AutoDeleteBtn.MouseButton1Click:Connect(function() self:ToggleAutoDelete() end)
     
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
-        Size = UDim2.new(1, 0, 1, -92),
-        Position = UDim2.new(0, 0, 0, 90)
+        Size = UDim2.new(1, 0, 1, -124), -- เพิ่ม offset เพื่อรองรับปุ่มใหม่
+        Position = UDim2.new(0, 0, 0, 122)
     })
     
     self.Container.ScrollBarThickness = 4
@@ -133,12 +183,12 @@ function AutoCratesTab:Init(parent)
     self:RefreshInventory()
     self:UpdateInfoLabel()
     self:UpdateSelectButton()
+    self:UpdateAccessoryStatus()
     
-    -- ✅ สร้าง Lock Overlay หลังสุด (ซ่อนไว้ก่อน)
     self.LockOverlay = Instance.new("Frame", parent)
     self.LockOverlay.Name = "LockOverlay"
-    self.LockOverlay.Size = UDim2.new(1, 0, 1, -92)
-    self.LockOverlay.Position = UDim2.new(0, 0, 0, 90)
+    self.LockOverlay.Size = UDim2.new(1, 0, 1, -124)
+    self.LockOverlay.Position = UDim2.new(0, 0, 0, 122)
     self.LockOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     self.LockOverlay.BackgroundTransparency = 0.6
     self.LockOverlay.BorderSizePixel = 0
@@ -156,6 +206,173 @@ function AutoCratesTab:Init(parent)
     })
     lockLabel.ZIndex = 1001
     lockLabel.TextWrapped = true
+    
+    -- ✅ อัพเดท Accessory Status ทุก 2 วินาที
+    task.spawn(function()
+        while self.Container and self.Container.Parent do
+            self:UpdateAccessoryStatus()
+            task.wait(2)
+        end
+    end)
+end
+
+-- ✅ สร้างฐานข้อมูลขยะจาก CratesInfo (Item 1-4)
+function AutoCratesTab:BuildTrashDatabase()
+    self.TrashNamesList = {}
+    
+    for crateName, crateData in pairs(CratesInfo) do
+        if crateData.Rewards then
+            local r = crateData.Rewards
+            
+            -- เก็บเฉพาะ Accessory (1-4)
+            if r.ItemOne and r.ItemOne.Name then 
+                self.TrashNamesList[r.ItemOne.Name] = true 
+            end
+            if r.ItemTwo and r.ItemTwo.Name then 
+                self.TrashNamesList[r.ItemTwo.Name] = true 
+            end
+            if r.ItemThree and r.ItemThree.Name then 
+                self.TrashNamesList[r.ItemThree.Name] = true 
+            end
+            if r.ItemFour and r.ItemFour.Name then 
+                self.TrashNamesList[r.ItemFour.Name] = true 
+            end
+        end
+    end
+    
+    -- ลบของยกเว้นออกจากรายการ
+    for name, _ in pairs(AUTO_DELETE_CONFIG.EXCEPTION_LIST) do
+        if self.TrashNamesList[name] then
+            self.TrashNamesList[name] = nil
+        end
+    end
+end
+
+-- ✅ ตรวจสอบจำนวน Accessories และคำนวณช่องว่าง
+function AutoCratesTab:GetAccessorySpace()
+    local replica = ReplicaListener:GetReplica()
+    if not replica or not replica.Data then return 0, 0 end
+    
+    local accessories = replica.Data.AccessoryService.Accessories or {}
+    local count = 0
+    for _ in pairs(accessories) do count = count + 1 end
+    
+    local space = AUTO_DELETE_CONFIG.MAX_ACCESSORIES - count
+    return count, space
+end
+
+-- ✅ อัพเดทสถานะ Accessories
+function AutoCratesTab:UpdateAccessoryStatus()
+    if not self.AccessoryStatusLabel then return end
+    
+    local count, space = self:GetAccessorySpace()
+    local THEME = self.Config.THEME
+    
+    local color = THEME.TextDim
+    if space <= AUTO_DELETE_CONFIG.SAFE_THRESHOLD then
+        color = THEME.Fail
+    elseif space <= 50 then
+        color = THEME.Warning
+    else
+        color = THEME.AccentGreen
+    end
+    
+    self.AccessoryStatusLabel.Text = string.format(
+        "📦 Accessories: %d/%d (Space: %d)",
+        count,
+        AUTO_DELETE_CONFIG.MAX_ACCESSORIES,
+        space
+    )
+    self.AccessoryStatusLabel.TextColor3 = color
+end
+
+-- ✅ Toggle Auto Delete
+function AutoCratesTab:ToggleAutoDelete()
+    if self.IsProcessing then return end
+    
+    self.AutoDeleteEnabled = not self.AutoDeleteEnabled
+    local THEME = self.Config.THEME
+    
+    if self.AutoDeleteEnabled then
+        self.AutoDeleteBtn.Text = "🗑️ AUTO DELETE: ON"
+        self.AutoDeleteBtn.TextColor3 = THEME.AccentGreen
+        self.AutoDeleteBtnStroke.Color = THEME.AccentGreen
+        self.StateManager:SetStatus("✅ Auto Delete Enabled", THEME.Success, self.StatusLabel)
+    else
+        self.AutoDeleteBtn.Text = "🗑️ AUTO DELETE: OFF"
+        self.AutoDeleteBtn.TextColor3 = THEME.TextGray
+        self.AutoDeleteBtnStroke.Color = THEME.GlassStroke
+        self.StateManager:SetStatus("⚪ Auto Delete Disabled", THEME.TextGray, self.StatusLabel)
+    end
+end
+
+-- ✅ ฟังก์ชันลบ Accessories ขยะ
+function AutoCratesTab:AutoDeleteAccessories()
+    local replica = ReplicaListener:GetReplica()
+    if not replica or not replica.Data then return false end
+    
+    local accessories = replica.Data.AccessoryService.Accessories
+    local equippedList = replica.Data.AccessoryService.EquippedAccessories
+    
+    local equippedSet = {}
+    if equippedList then 
+        for _, u in pairs(equippedList) do 
+            equippedSet[u] = true 
+        end 
+    end
+    
+    local toDeleteList = {}
+    
+    for uuid, item in pairs(accessories) do
+        local n = item.Name
+        local shouldDelete = false
+        
+        -- เงื่อนไข:
+        -- 1. อยู่ในรายการขยะ (Item 1-4)
+        -- 2. ไม่ใช่ของยกเว้น
+        -- 3. ไม่ได้ใส่อยู่
+        -- 4. ไม่มี Scroll
+        
+        if self.TrashNamesList[n] 
+            and not AUTO_DELETE_CONFIG.EXCEPTION_LIST[n] 
+            and not equippedSet[uuid] 
+            and not item.Scroll then
+            shouldDelete = true
+        end
+
+        if shouldDelete then
+            table.insert(toDeleteList, uuid)
+        end
+    end
+    
+    if #toDeleteList == 0 then return true end
+    
+    local THEME = self.Config.THEME
+    self.StateManager:SetStatus(
+        string.format("🗑️ Deleting %d trash accessories...", #toDeleteList),
+        THEME.Warning,
+        self.StatusLabel
+    )
+    
+    local success, err = pcall(function()
+        return ReplicatedStorage.Packages.Knit.Services.AccessoryService.RF.Delete:InvokeServer(toDeleteList)
+    end)
+    
+    if success then
+        self.StateManager:SetStatus(
+            string.format("✅ Deleted %d accessories!", #toDeleteList),
+            THEME.Success,
+            self.StatusLabel
+        )
+        return true
+    else
+        self.StateManager:SetStatus(
+            "❌ Delete failed: " .. tostring(err),
+            THEME.Fail,
+            self.StatusLabel
+        )
+        return false
+    end
 end
 
 function AutoCratesTab:RefreshInventory()
@@ -192,7 +409,6 @@ function AutoCratesTab:CreateCrateCard(crate)
     local THEME = self.Config.THEME
     local isSelected = self.SelectedCrates[crate.Name] ~= nil
     
-    -- ค่าเริ่มต้น 500 หรือตามที่มี
     local currentSelectedAmount = self.SelectedCrates[crate.Name]
     local defaultAmount = currentSelectedAmount or math.min(500, crate.Amount)
     
@@ -209,7 +425,6 @@ function AutoCratesTab:CreateCrateCard(crate)
     Stroke.Color = isSelected and THEME.AccentGreen or THEME.GlassStroke
     Stroke.Transparency = 0.5
     
-    -- Checkbox
     local CheckBox = Instance.new("Frame", Card)
     CheckBox.Size = UDim2.new(0, 16, 0, 16)
     CheckBox.Position = UDim2.new(0, 4, 0, 4)
@@ -234,13 +449,12 @@ function AutoCratesTab:CreateCrateCard(crate)
     })
     CheckMark.ZIndex = 16
     
-    -- Total Amount (เพิ่ม x และทำสีทึบลง)
     local TotalLabel = self.UIFactory.CreateLabel({
         Parent = Card,
         Text = "x" .. tostring(crate.Amount),
         Size = UDim2.new(0, 40, 0, 20),
         Position = UDim2.new(1, -44, 0, 2),
-        TextColor = Color3.fromRGB(180, 180, 180), -- สีเทาอ่อนลง
+        TextColor = Color3.fromRGB(180, 180, 180),
         TextSize = 11,
         Font = Enum.Font.GothamBold
     })
@@ -248,7 +462,6 @@ function AutoCratesTab:CreateCrateCard(crate)
     TotalLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     TotalLabel.ZIndex = 20
     
-    -- Image (ใหญ่ขึ้น ตรงกลางการ์ด)
     local Image = Instance.new("ImageLabel", Card)
     Image.Size = UDim2.new(0, 60, 0, 60)
     Image.Position = UDim2.new(0.5, -30, 0.5, -35)
@@ -258,7 +471,6 @@ function AutoCratesTab:CreateCrateCard(crate)
     Image.Image = imgId
     Image.ScaleType = Enum.ScaleType.Fit
     
-    -- Input (ค่าเริ่มต้น 500 หรือน้อยกว่า)
     local InputContainer = Instance.new("Frame", Card)
     InputContainer.Size = UDim2.new(1, -10, 0, 18)
     InputContainer.Position = UDim2.new(0, 5, 1, -22)
@@ -277,18 +489,17 @@ function AutoCratesTab:CreateCrateCard(crate)
     AmountInput.Position = UDim2.new(0, 4, 0, 1)
     AmountInput.BackgroundTransparency = 1
     AmountInput.Text = tostring(defaultAmount)
-    AmountInput.TextColor3 = Color3.fromRGB(255, 255, 255) -- สีขาวเต็ม
-    AmountInput.Font = Enum.Font.GothamBold -- เปลี่ยนเป็น Bold
-    AmountInput.TextSize = 11 -- ขนาดใหญ่ขึ้นนิด
+    AmountInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    AmountInput.Font = Enum.Font.GothamBold
+    AmountInput.TextSize = 11
     AmountInput.ClearTextOnFocus = false
     AmountInput.PlaceholderText = tostring(defaultAmount)
     AmountInput.TextXAlignment = Enum.TextXAlignment.Center
-    AmountInput.TextStrokeTransparency = 0.7 -- เพิ่ม stroke ให้เด่นขึ้น
+    AmountInput.TextStrokeTransparency = 0.7
     AmountInput.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     
     self.Utils.SanitizeNumberInput(AmountInput, crate.Amount, 1)
     
-    -- Click Button
     local ClickBtn = Instance.new("TextButton", Card)
     ClickBtn.Size = UDim2.new(1, 0, 0, 85)
     ClickBtn.Position = UDim2.new(0, 0, 0, 0)
@@ -297,10 +508,8 @@ function AutoCratesTab:CreateCrateCard(crate)
     ClickBtn.ZIndex = 5
     
     ClickBtn.MouseButton1Click:Connect(function()
-        -- ✅✅✅ ใส่บรรทัดนี้: ถ้ากำลังทำงานอยู่ ให้หยุดทันที ไม่ต้องทำอะไรต่อ
-        if self.IsProcessing then return end 
-        -- ✅✅✅ จบส่วนที่เพิ่ม
-
+        if self.IsProcessing then return end
+        
         local amount = tonumber(AmountInput.Text) or math.min(500, crate.Amount)
         
         if amount <= 0 then
@@ -333,14 +542,12 @@ function AutoCratesTab:CreateCrateCard(crate)
     
     AmountInput.Focused:Connect(function()
         if self.IsProcessing then
-            AmountInput:ReleaseFocus() -- สั่งให้หลุดโฟกัสทันที (พิมพ์ไม่ได้)
+            AmountInput:ReleaseFocus()
         end
     end)
-    -- ✅✅✅ จบส่วนที่เพิ่ม
 
     AmountInput:GetPropertyChangedSignal("Text"):Connect(function()
-        -- ✅✅✅ เพิ่มกันเหนียวตรงนี้อีกจุด
-        if self.IsProcessing then return end 
+        if self.IsProcessing then return end
         
         local amount = tonumber(AmountInput.Text) or 0
         
@@ -370,7 +577,6 @@ function AutoCratesTab:CreateCrateCard(crate)
 end
 
 function AutoCratesTab:ToggleSelectAll()
-    -- ป้องกันการกดเมื่อกำลัง Process
     if self.IsProcessing then return end
     
     if self:AreAllSelected() then
@@ -398,22 +604,19 @@ end
 function AutoCratesTab:UpdateSelectButton()
     local THEME = self.Config.THEME
     
-    -- รีเซตสีพื้นหลังให้เป็นแบบ Card เสมอ (แก้กรณีมันค้างเป็นสีเทาตอน Disable)
     self.SelectAllBtn.BackgroundColor3 = THEME.CardBg 
 
     if self:AreAllSelected() then
-
         self.SelectAllBtn.Text = "UNSELECT ALL"
-        self.SelectAllBtn.TextColor3 = THEME.Fail or Color3.fromRGB(255, 85, 85) -- แดงชัดๆ
+        self.SelectAllBtn.TextColor3 = THEME.Fail or Color3.fromRGB(255, 85, 85)
         
         if self.SelectAllBtnStroke then
             self.SelectAllBtnStroke.Color = THEME.Fail or Color3.fromRGB(255, 85, 85)
-            self.SelectAllBtnStroke.Transparency = 0.4 -- ให้ขอบชัดเท่าเดิม
+            self.SelectAllBtnStroke.Transparency = 0.4
         end
     else
-        -- 🔵 เมื่อยังเลือกไม่ครบ (Select All) -> ให้เป็นสไตล์เดียวกับปุ่ม START (ฟ้า/ขาว)
         self.SelectAllBtn.Text = "SELECT ALL"
-        self.SelectAllBtn.TextColor3 = THEME.TextWhite -- ขาวสว่าง
+        self.SelectAllBtn.TextColor3 = THEME.TextWhite
         
         if self.SelectAllBtnStroke then
             self.SelectAllBtnStroke.Color = THEME.AccentBlue
@@ -421,9 +624,8 @@ function AutoCratesTab:UpdateSelectButton()
         end
     end
 
-    -- ⚙️ ถ้ากำลังรันงานอยู่ (Disabled) -> ให้ทำสีเทาทึบๆ
     if self.IsProcessing then
-        self.SelectAllBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45) -- เทาเข้ม
+        self.SelectAllBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
         self.SelectAllBtn.TextTransparency = 0.6
         self.SelectAllBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
         if self.SelectAllBtnStroke then
@@ -510,15 +712,14 @@ function AutoCratesTab:StartAutoOpen()
     self.IsProcessing = true
     self.ShouldStop = false
     self.AutoOpenBtn.Text = "STOP OPEN"
-    self.AutoOpenBtn.TextColor3 = self.Config.THEME.Fail -- เปลี่ยนแค่สีตัวอักษรเป็นแดง
+    self.AutoOpenBtn.TextColor3 = self.Config.THEME.Fail
     if self.AutoOpenBtnStroke then
-        self.AutoOpenBtnStroke.Color = self.Config.THEME.Fail -- เปลี่ยนขอบเป็นแดง
+        self.AutoOpenBtnStroke.Color = self.Config.THEME.Fail
     end
     if self.LockOverlay then
         self.LockOverlay.Visible = true
     end
     
-    -- ✅ Disable SELECT ALL button
     self.SelectAllBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     self.SelectAllBtn.TextColor3 = Color3.fromRGB(100, 100, 100)
     
@@ -527,6 +728,7 @@ function AutoCratesTab:StartAutoOpen()
     end)
 end
 
+-- ✅ ฟังก์ชันเปิดกล่องพร้อม Auto Delete
 function AutoCratesTab:ProcessCrateOpening(selectedList)
     local THEME = self.Config.THEME
     local CratesService = ReplicatedStorage.Packages.Knit.Services.CratesService
@@ -551,7 +753,6 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
         local targetAmount = crateData.Amount
         local opened = 0
         
-        -- ดึง Input reference
         local cardData = self.CrateCards[crateName]
         if not cardData then continue end
         
@@ -564,8 +765,56 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
         while opened < targetAmount do
             if self.ShouldStop then break end
             
+            -- ✅ ตรวจสอบช่องว่าง Accessories ก่อนเปิด
+            local count, space = self:GetAccessorySpace()
+            self:UpdateAccessoryStatus()
+            
+            -- ✅ ถ้าช่องว่าง <= 16 และเปิด Auto Delete
+            if space <= AUTO_DELETE_CONFIG.SAFE_THRESHOLD then
+                if self.AutoDeleteEnabled then
+                    self.StateManager:SetStatus(
+                        string.format("🗑️ Space low (%d) - Deleting...", space),
+                        THEME.Warning,
+                        self.StatusLabel
+                    )
+                    
+                    local deleteSuccess = self:AutoDeleteAccessories()
+                    if deleteSuccess then
+                        task.wait(0.5)
+                        count, space = self:GetAccessorySpace()
+                        self:UpdateAccessoryStatus()
+                    else
+                        -- ลบไม่สำเร็จ หยุดเปิด
+                        self.StateManager:SetStatus("❌ Delete failed - Stopping", THEME.Fail, self.StatusLabel)
+                        self.ShouldStop = true
+                        break
+                    end
+                else
+                    -- ไม่ได้เปิด Auto Delete และของเต็ม หยุดเปิด
+                    self.StateManager:SetStatus(
+                        string.format("⚠️ Inventory full (%d/%d) - Stopping", count, AUTO_DELETE_CONFIG.MAX_ACCESSORIES),
+                        THEME.Fail,
+                        self.StatusLabel
+                    )
+                    self.ShouldStop = true
+                    break
+                end
+            end
+            
+            -- ✅ ตรวจสอบซ้ำหลังลบ ว่ายังมีที่ว่างพอเปิดต่อไหม
+            count, space = self:GetAccessorySpace()
+            if space < AUTO_DELETE_CONFIG.BATCH_SIZE then
+                self.StateManager:SetStatus(
+                    string.format("⚠️ Not enough space (%d) - Stopping", space),
+                    THEME.Fail,
+                    self.StatusLabel
+                )
+                self.ShouldStop = true
+                break
+            end
+            
             local remaining = targetAmount - opened
-            local batchSize = math.min(8, remaining)
+            local batchSize = math.min(AUTO_DELETE_CONFIG.BATCH_SIZE, remaining)
             
             local success, err = pcall(function()
                 return UseCrateRemote:InvokeServer(crateName, batchSize)
@@ -575,7 +824,6 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
                 opened = opened + batchSize
                 totalOpened = totalOpened + batchSize
                 
-                -- ✅ อัพเดท countdown ใน Input
                 local remainingAmount = targetAmount - opened
                 if cardData.Input then
                     cardData.Input.Text = tostring(remainingAmount)
@@ -604,21 +852,17 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
             end
         end
         
-        -- เคลียร์รายการที่เปิดเสร็จแล้ว
         local remaining = targetAmount - opened
 
         if remaining > 0 then
-            -- 1. ถ้าของยังเหลือ (กด Stop หรือ Error): อัพเดทค่าที่เหลือใส่ระบบ แล้วข้ามการ Unselect ไปเลย
             self.SelectedCrates[crateName] = remaining
             
             if cardData.Input then
-                cardData.Input.Text = tostring(remaining) -- คงเลขที่เหลือไว้
+                cardData.Input.Text = tostring(remaining)
             end
         else
-            -- 2. ถ้าเปิดครบจนหมด (เหลือ 0): ค่อยสั่ง Unselect และรีเซตการ์ด
             self.SelectedCrates[crateName] = nil
             
-            -- รีเซตหน้าตาการ์ด (เอาขอบเขียวออก)
             local THEME = self.Config.THEME
             if cardData.Stroke then 
                 cardData.Stroke.Color = THEME.GlassStroke 
@@ -634,12 +878,10 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
                 cardData.CheckBoxStroke.Color = THEME.GlassStroke 
             end
             
-            -- รีเซตตัวเลขเป็นค่า Default (เพื่อให้พร้อมกดเลือกใหม่ในรอบหน้า)
             if cardData.Input then
                 cardData.Input.Text = tostring(cardData.DefaultAmount or 1)
             end
         end
-        -- ✅✅✅ จบโค้ดใหม่
 
         task.wait(0.2)
     end
@@ -664,6 +906,7 @@ function AutoCratesTab:ProcessCrateOpening(selectedList)
     self:RefreshInventory()
     self:UpdateInfoLabel()
     self:UpdateSelectButton()
+    self:UpdateAccessoryStatus()
 end
 
 function AutoCratesTab:ResetButton()
@@ -671,11 +914,8 @@ function AutoCratesTab:ResetButton()
     self.ShouldStop = false
     local THEME = self.Config.THEME
     
-    -- คืนค่าปุ่ม Start
     self.AutoOpenBtn.Text = "🚀 START OPEN"
     self.AutoOpenBtn.TextColor3 = THEME.TextWhite
-    
-    -- ✅✅✅ เพิ่มบรรทัดนี้ครับ: คืนค่าสีพื้นหลังให้กลับเป็นปกติ (จากเดิมที่ค้างสีส้ม)
     self.AutoOpenBtn.BackgroundColor3 = THEME.CardBg 
     
     if self.AutoOpenBtnStroke then
@@ -686,7 +926,7 @@ function AutoCratesTab:ResetButton()
         self.LockOverlay.Visible = false
     end
     
-    -- อัพเดทสีปุ่ม Select All ให้กลับมาปกติ
     self:UpdateSelectButton()
 end
+
 return AutoCratesTab
