@@ -672,8 +672,12 @@ function AutoCratesTab:ResetButton()
     local THEME = self.Config.THEME
     
     -- คืนค่าปุ่ม Start
-    self.AutoOpenBtn.Text = "START OPEN"
+    self.AutoOpenBtn.Text = "🚀 START OPEN"
     self.AutoOpenBtn.TextColor3 = THEME.TextWhite
+    
+    -- ✅✅✅ เพิ่มบรรทัดนี้ครับ: คืนค่าสีพื้นหลังให้กลับเป็นปกติ (จากเดิมที่ค้างสีส้ม)
+    self.AutoOpenBtn.BackgroundColor3 = THEME.CardBg 
+    
     if self.AutoOpenBtnStroke then
         self.AutoOpenBtnStroke.Color = THEME.AccentBlue
     end
@@ -682,7 +686,7 @@ function AutoCratesTab:ResetButton()
         self.LockOverlay.Visible = false
     end
     
-    -- ✅ อัพเดทสีปุ่ม Select All ให้กลับมาปกติ
+    -- อัพเดทสีปุ่ม Select All ให้กลับมาปกติ
     self:UpdateSelectButton()
 end
 return AutoCratesTab
