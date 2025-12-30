@@ -292,6 +292,10 @@ function AutoCratesTab:CreateCrateCard(crate)
     ClickBtn.ZIndex = 5
     
     ClickBtn.MouseButton1Click:Connect(function()
+        -- ✅✅✅ ใส่บรรทัดนี้: ถ้ากำลังทำงานอยู่ ให้หยุดทันที ไม่ต้องทำอะไรต่อ
+        if self.IsProcessing then return end 
+        -- ✅✅✅ จบส่วนที่เพิ่ม
+
         local amount = tonumber(AmountInput.Text) or math.min(500, crate.Amount)
         
         if amount <= 0 then
@@ -322,7 +326,17 @@ function AutoCratesTab:CreateCrateCard(crate)
         self:UpdateSelectButton()
     end)
     
+    AmountInput.Focused:Connect(function()
+        if self.IsProcessing then
+            AmountInput:ReleaseFocus() -- สั่งให้หลุดโฟกัสทันที (พิมพ์ไม่ได้)
+        end
+    end)
+    -- ✅✅✅ จบส่วนที่เพิ่ม
+
     AmountInput:GetPropertyChangedSignal("Text"):Connect(function()
+        -- ✅✅✅ เพิ่มกันเหนียวตรงนี้อีกจุด
+        if self.IsProcessing then return end 
+        
         local amount = tonumber(AmountInput.Text) or 0
         
         if amount > crate.Amount then
