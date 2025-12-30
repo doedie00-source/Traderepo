@@ -189,7 +189,8 @@ function AutoCratesTab:CreateCrateCard(crate)
     local isSelected = self.SelectedCrates[crate.Name] ~= nil
     
     -- ค่าเริ่มต้น 500 หรือตามที่มี
-    local defaultAmount = math.min(500, crate.Amount)
+    local currentSelectedAmount = self.SelectedCrates[crate.Name]
+    local defaultAmount = currentSelectedAmount or math.min(500, crate.Amount)
     
     local Card = Instance.new("Frame", self.Container)
     Card.Name = crate.Name
@@ -634,14 +635,17 @@ function AutoCratesTab:ResetButton()
     self.AutoOpenBtn.Text = "🚀 START OPEN"
     self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.AccentGreen
     
-    -- ✅ ซ่อน Lock Overlay
     if self.LockOverlay then
         self.LockOverlay.Visible = false
     end
     
-    -- ✅ Enable SELECT ALL button กลับ
-    self:UpdateSelectButton()
+    -- ✅ ไม่ต้อง DeselectAll ที่นี่
+    -- ให้ปุ่ม Select All กลับมาทำงานปกติ
+    self.SelectAllBtn.BackgroundColor3 = self.Config.THEME.AccentBlue
     self.SelectAllBtn.TextColor3 = self.Config.THEME.TextWhite
+    
+    -- อัพเดทสถานะปุ่ม (ว่าเป็น Select หรือ Unselect All ตามจริง)
+    self:UpdateSelectButton()
 end
 
 return AutoCratesTab
