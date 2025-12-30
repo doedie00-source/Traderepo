@@ -90,13 +90,15 @@ function AutoCratesTab:Init(parent)
         Parent = btnContainer,
         Text = "🚀 START OPEN",
         Size = UDim2.new(0, 160, 0, 32),
-        BgColor = THEME.AccentGreen,
+        BgColor = THEME.CardBg, -- 🟢 ใช้สีพื้นหลังการ์ดแทน (จะดูเนียนกว่า)
         TextSize = 12,
         Font = Enum.Font.GothamBold,
         CornerRadius = 6
     })
-    self.UIFactory.AddStroke(self.AutoOpenBtn, Color3.fromRGB(100, 255, 150), 2, 0.3)
-    
+    -- ใส่ขอบสีฟ้า/น้ำเงินตามธีมหลักให้ดูโมเดิร์น
+    local BtnStroke = self.UIFactory.AddStroke(self.AutoOpenBtn, THEME.AccentBlue, 1.5, 0.4)
+    self.AutoOpenBtnStroke = BtnStroke -- เก็บไว้เปลี่ยนสีตอน Stop
+
     self.SelectAllBtn.MouseButton1Click:Connect(function() self:ToggleSelectAll() end)
     self.AutoOpenBtn.MouseButton1Click:Connect(function() self:ToggleAutoOpen() end)
     
@@ -393,7 +395,7 @@ end
 
 function AutoCratesTab:UpdateSelectButton()
     if self:AreAllSelected() then
-        self.SelectAllBtn.Text = "✕ UNSELECT ALL"
+        self.SelectAllBtn.Text = "X UNSELECT ALL"
         self.SelectAllBtn.BackgroundColor3 = self.Config.THEME.BtnDefault
     else
         self.SelectAllBtn.Text = "✓ SELECT ALL"
@@ -474,9 +476,10 @@ function AutoCratesTab:StartAutoOpen()
     self.IsProcessing = true
     self.ShouldStop = false
     self.AutoOpenBtn.Text = "🛑 STOP OPEN"
-    self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.Fail
-    
-    -- ✅ แสดง Lock Overlay
+    self.AutoOpenBtn.TextColor3 = self.Config.THEME.Fail -- เปลี่ยนแค่สีตัวอักษรเป็นแดง
+    if self.AutoOpenBtnStroke then
+        self.AutoOpenBtnStroke.Color = self.Config.THEME.Fail -- เปลี่ยนขอบเป็นแดง
+    end
     if self.LockOverlay then
         self.LockOverlay.Visible = true
     end
@@ -632,19 +635,25 @@ end
 function AutoCratesTab:ResetButton()
     self.IsProcessing = false
     self.ShouldStop = false
-    self.AutoOpenBtn.Text = "🚀 START OPEN"
-    self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.AccentGreen
+    local THEME = self.Config.THEME
     
+    -- 🎨 คืนค่าสีพื้นฐาน
+    self.AutoOpenBtn.Text = "🚀 START OPEN"
+    self.AutoOpenBtn.TextColor3 = THEME.TextWhite
+    self.AutoOpenBtn.BackgroundColor3 = THEME.CardBg -- คืนค่าสีมืด
+    
+    if self.AutoOpenBtnStroke then
+        self.AutoOpenBtnStroke.Color = THEME.AccentBlue -- คืนค่าสีขอบเป็นสีฟ้า
+    end
+    
+    -- ปรับปรุง LockOverlay ให้ดูซอฟต์ลง (ถ้ามี)
     if self.LockOverlay then
         self.LockOverlay.Visible = false
     end
     
-    -- ✅ ไม่ต้อง DeselectAll ที่นี่
-    -- ให้ปุ่ม Select All กลับมาทำงานปกติ
-    self.SelectAllBtn.BackgroundColor3 = self.Config.THEME.AccentBlue
-    self.SelectAllBtn.TextColor3 = self.Config.THEME.TextWhite
-    
-    -- อัพเดทสถานะปุ่ม (ว่าเป็น Select หรือ Unselect All ตามจริง)
+    -- จัดการปุ่ม Select All ให้เข้าธีม
+    self.SelectAllBtn.BackgroundColor3 = THEME.CardBg
+    self.SelectAllBtn.TextColor3 = THEME.TextWhite
     self:UpdateSelectButton()
 end
 
