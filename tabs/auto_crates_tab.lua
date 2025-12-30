@@ -4,7 +4,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
-local TweenService = game:GetService("TweenService")
 
 local Knit = require(ReplicatedStorage.Packages.Knit)
 local ReplicaListener = Knit.GetController("ReplicaListener")
@@ -61,114 +60,122 @@ function AutoCratesTab:Init(parent)
     self:BuildTrashDatabase()
     
     local header = Instance.new("Frame", parent)
-    header.Size = UDim2.new(1, 0, 0, 110) -- ปรับความสูงให้กระชับ
+    header.Size = UDim2.new(1, 0, 0, 120)
     header.BackgroundTransparency = 1
     
-    -- Title
     self.UIFactory.CreateLabel({
         Parent = header,
         Text = "🎁 Auto Open Crates",
-        Size = UDim2.new(1, -12, 0, 24),
-        Position = UDim2.new(0, 10, 0, 0),
+        Size = UDim2.new(1, -8, 0, 24),
+        Position = UDim2.new(0, 8, 0, 0),
         TextColor = THEME.TextWhite,
-        TextSize = 16,
+        TextSize = 15,
         Font = Enum.Font.GothamBold,
         TextXAlign = Enum.TextXAlignment.Left
     })
     
     self.UIFactory.CreateLabel({
         Parent = header,
-        Text = "Select crates to open automatically",
-        Size = UDim2.new(1, -12, 0, 16),
-        Position = UDim2.new(0, 10, 0, 22),
+        Text = "Select crates and open them automatically (1-8 per batch)",
+        Size = UDim2.new(1, -8, 0, 16),
+        Position = UDim2.new(0, 8, 0, 24),
         TextColor = THEME.TextDim,
-        TextSize = 11,
+        TextSize = 10,
         Font = Enum.Font.Gotham,
         TextXAlign = Enum.TextXAlignment.Left
     })
     
-    -- 🟢 ROW 1: ปุ่มสั่งงาน (จัดให้เต็มความกว้าง)
+    -- บรรทัดที่ 1: Select All + Start/Stop
     local btnContainer1 = Instance.new("Frame", header)
-    btnContainer1.Size = UDim2.new(1, -20, 0, 34)
-    btnContainer1.Position = UDim2.new(0, 10, 0, 42)
+    btnContainer1.Size = UDim2.new(1, -8, 0, 32)
+    btnContainer1.Position = UDim2.new(0, 8, 0, 42)
     btnContainer1.BackgroundTransparency = 1
     
     local btnLayout1 = Instance.new("UIListLayout", btnContainer1)
     btnLayout1.FillDirection = Enum.FillDirection.Horizontal
     btnLayout1.Padding = UDim.new(0, 8)
     
-    -- ปุ่ม Select All (กว้าง 35%)
     self.SelectAllBtn = self.UIFactory.CreateButton({
         Parent = btnContainer1,
         Text = "SELECT ALL",
-        Size = UDim2.new(0.35, -4, 1, 0),
+        Size = UDim2.new(0, 140, 0, 32),
         BgColor = THEME.CardBg,
         TextSize = 12,
         Font = Enum.Font.GothamBold,
-        CornerRadius = 8
+        CornerRadius = 6
     })
     self.SelectAllBtnStroke = self.UIFactory.AddStroke(self.SelectAllBtn, THEME.AccentBlue, 1.5, 0.4)
 
-    -- ปุ่ม Start Open (กว้าง 65% - ใหญ่กว่า เด่นกว่า)
     self.AutoOpenBtn = self.UIFactory.CreateButton({
         Parent = btnContainer1,
-        Text = "🚀 START OPEN",
-        Size = UDim2.new(0.65, -4, 1, 0),
-        BgColor = THEME.AccentBlue, -- ใช้สีฟ้าให้เด่น
-        TextSize = 13,
-        Font = Enum.Font.GothamBlack, -- ตัวหนาพิเศษ
-        CornerRadius = 8
+        Text = "START OPEN",
+        Size = UDim2.new(0, 160, 0, 32),
+        BgColor = THEME.CardBg,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
+        CornerRadius = 6
     })
-    self.AutoOpenBtn.BackgroundTransparency = 0.8
-    self.AutoOpenBtnStroke = self.UIFactory.AddStroke(self.AutoOpenBtn, THEME.AccentBlue, 1.5, 0)
+    self.AutoOpenBtnStroke = self.UIFactory.AddStroke(self.AutoOpenBtn, THEME.AccentBlue, 1.5, 0.4)
 
-    -- 🟢 ROW 2: Toggle Switch + Status
-    local row2 = Instance.new("Frame", header)
-    row2.Size = UDim2.new(1, -20, 0, 26)
-    row2.Position = UDim2.new(0, 10, 0, 84)
-    row2.BackgroundTransparency = 1
+    -- ✅ บรรทัดที่ 2: Auto Delete Toggle + Status
+    local btnContainer2 = Instance.new("Frame", header)
+    btnContainer2.Size = UDim2.new(1, -8, 0, 32)
+    btnContainer2.Position = UDim2.new(0, 8, 0, 82)
+    btnContainer2.BackgroundTransparency = 1
     
-    -- สร้างปุ่ม Toggle แบบ Slide (Custom UI)
-    self:CreateToggleSwitch(row2)
+    local btnLayout2 = Instance.new("UIListLayout", btnContainer2)
+    btnLayout2.FillDirection = Enum.FillDirection.Horizontal
+    btnLayout2.Padding = UDim.new(0, 8)
     
-    -- Status Label (ชิดขวา)
+    self.AutoDeleteBtn = self.UIFactory.CreateButton({
+        Parent = btnContainer2,
+        Text = "AUTO DELETE: OFF",
+        Size = UDim2.new(0, 200, 0, 32),
+        BgColor = THEME.CardBg,
+        TextColor = THEME.TextGray,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        CornerRadius = 6
+    })
+    self.AutoDeleteBtnStroke = self.UIFactory.AddStroke(self.AutoDeleteBtn, THEME.GlassStroke, 1.5, 0.5)
+    
+    -- Status Label สำหรับแสดงจำนวน Accessories
     self.AccessoryStatusLabel = self.UIFactory.CreateLabel({
-        Parent = row2,
+        Parent = btnContainer2,
         Text = "Loading...",
-        Size = UDim2.new(1, -120, 1, 0), -- เว้นที่ให้ Toggle ทางซ้าย
-        Position = UDim2.new(0, 120, 0, 0),
+        Size = UDim2.new(0, 240, 0, 32),
         TextColor = THEME.TextDim,
         TextSize = 11,
         Font = Enum.Font.GothamMedium,
-        TextXAlign = Enum.TextXAlignment.Right
+        TextXAlign = Enum.TextXAlignment.Left
     })
 
-    -- Events
     self.SelectAllBtn.MouseButton1Click:Connect(function() self:ToggleSelectAll() end)
     self.AutoOpenBtn.MouseButton1Click:Connect(function() self:ToggleAutoOpen() end)
+    self.AutoDeleteBtn.MouseButton1Click:Connect(function() self:ToggleAutoDelete() end)
     
-    -- Scrolling Container
     self.Container = self.UIFactory.CreateScrollingFrame({
         Parent = parent,
-        Size = UDim2.new(1, 0, 1, -118), -- ปรับ offset ตาม header ใหม่
-        Position = UDim2.new(0, 0, 0, 118)
+        Size = UDim2.new(1, 0, 1, -124), -- เพิ่ม offset เพื่อรองรับปุ่มใหม่
+        Position = UDim2.new(0, 0, 0, 122)
     })
     
-    self.Container.ScrollBarThickness = 3
+    self.Container.ScrollBarThickness = 4
     self.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    self.Container.CanvasSize = UDim2.new(0, 0, 0, 0)
     
     if self.Container:FindFirstChild("UIListLayout") then
         self.Container.UIListLayout:Destroy()
     end
     
     local padding = self.Container:FindFirstChild("UIPadding") or Instance.new("UIPadding", self.Container)
-    padding.PaddingTop = UDim.new(0, 5)
-    padding.PaddingLeft = UDim.new(0, 5)
-    padding.PaddingRight = UDim.new(0, 5)
-    padding.PaddingBottom = UDim.new(0, 10)
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 12)
     
     local layout = self.Container:FindFirstChild("UIGridLayout") or Instance.new("UIGridLayout", self.Container)
-    layout.CellSize = UDim2.new(0, 94, 0, 105) -- ปรับขนาดการ์ดนิดหน่อย
+    layout.CellSize = UDim2.new(0, 90, 0, 100)
     layout.CellPadding = UDim2.new(0, 6, 0, 6)
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -178,111 +185,35 @@ function AutoCratesTab:Init(parent)
     self:UpdateSelectButton()
     self:UpdateAccessoryStatus()
     
-    -- Lock Overlay
     self.LockOverlay = Instance.new("Frame", parent)
     self.LockOverlay.Name = "LockOverlay"
-    self.LockOverlay.Size = UDim2.new(1, 0, 1, -118)
-    self.LockOverlay.Position = UDim2.new(0, 0, 0, 118)
+    self.LockOverlay.Size = UDim2.new(1, 0, 1, -124)
+    self.LockOverlay.Position = UDim2.new(0, 0, 0, 122)
     self.LockOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    self.LockOverlay.BackgroundTransparency = 0.5
+    self.LockOverlay.BackgroundTransparency = 0.6
+    self.LockOverlay.BorderSizePixel = 0
+    self.LockOverlay.ZIndex = 1000
     self.LockOverlay.Visible = false
-    self.LockOverlay.ZIndex = 100
     
     local lockLabel = self.UIFactory.CreateLabel({
         Parent = self.LockOverlay,
-        Text = "🔒 OPENING...",
+        Text = "🔒 Processing...\nCannot select/edit while opening",
         Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
         TextColor = THEME.TextWhite,
-        TextSize = 20,
+        TextSize = 16,
         Font = Enum.Font.GothamBold
     })
-
+    lockLabel.ZIndex = 1001
+    lockLabel.TextWrapped = true
+    
+    -- ✅ อัพเดท Accessory Status ทุก 2 วินาที
     task.spawn(function()
         while self.Container and self.Container.Parent do
             self:UpdateAccessoryStatus()
             task.wait(2)
         end
     end)
-end
-
--- ✅ ฟังก์ชันสร้างปุ่ม Toggle Switch แบบ Slide
-function AutoCratesTab:CreateToggleSwitch(parent)
-    local THEME = self.Config.THEME
-    
-    local container = Instance.new("TextButton", parent)
-    container.Text = ""
-    container.Size = UDim2.new(0, 110, 1, 0)
-    container.BackgroundTransparency = 1
-    
-    -- ข้อความ "Auto Delete"
-    local label = Instance.new("TextLabel", container)
-    label.Text = "Auto Delete"
-    label.Size = UDim2.new(0, 70, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = THEME.TextGray
-    label.TextSize = 12
-    label.Font = Enum.Font.GothamBold
-    label.TextXAlign = Enum.TextXAlignment.Left
-    
-    -- รางสวิตช์ (Track)
-    local track = Instance.new("Frame", container)
-    track.Name = "Track"
-    track.Size = UDim2.new(0, 40, 0, 20)
-    track.Position = UDim2.new(0, 70, 0.5, -10)
-    track.BackgroundColor3 = Color3.fromRGB(40, 40, 45) -- สีตอนปิด
-    track.BorderSizePixel = 0
-    
-    local trackCorner = Instance.new("UICorner", track)
-    trackCorner.CornerRadius = UDim.new(1, 0)
-    
-    -- ปุ่มวงกลม (Knob)
-    local knob = Instance.new("Frame", track)
-    knob.Name = "Knob"
-    knob.Size = UDim2.new(0, 16, 0, 16)
-    knob.Position = UDim2.new(0, 2, 0.5, -8) -- ตำแหน่งซ้าย (ปิด)
-    knob.BackgroundColor3 = THEME.TextWhite
-    knob.BorderSizePixel = 0
-    
-    local knobCorner = Instance.new("UICorner", knob)
-    knobCorner.CornerRadius = UDim.new(1, 0)
-    
-    -- เก็บ UI ไว้ใช้อัพเดททีหลัง
-    self.ToggleUI = {
-        Track = track,
-        Knob = knob,
-        Label = label
-    }
-    
-    -- Event กดปุ่ม
-    container.MouseButton1Click:Connect(function()
-        self:ToggleAutoDelete()
-    end)
-end
-
-function AutoCratesTab:ToggleAutoDelete()
-    if self.IsProcessing then return end
-    
-    self.AutoDeleteEnabled = not self.AutoDeleteEnabled
-    local THEME = self.Config.THEME
-    
-    -- Animation Values
-    local targetPos = self.AutoDeleteEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-    local targetColor = self.AutoDeleteEnabled and THEME.AccentGreen or Color3.fromRGB(40, 40, 45)
-    local targetTextColor = self.AutoDeleteEnabled and THEME.TextWhite or THEME.TextGray
-    
-    -- เล่น Animation
-    if self.ToggleUI then
-        TweenService:Create(self.ToggleUI.Knob, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Position = targetPos}):Play()
-        TweenService:Create(self.ToggleUI.Track, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
-        TweenService:Create(self.ToggleUI.Label, TweenInfo.new(0.2), {TextColor3 = targetTextColor}):Play()
-    end
-    
-    -- Update Status Text ด้านล่าง
-    if self.AutoDeleteEnabled then
-        self.StateManager:SetStatus("✅ Auto Delete Enabled", THEME.Success, self.StatusLabel)
-    else
-        self.StateManager:SetStatus("⚪ Auto Delete Disabled", THEME.TextGray, self.StatusLabel)
-    end
 end
 
 -- ✅ สร้างฐานข้อมูลขยะจาก CratesInfo (Item 1-4)
@@ -330,6 +261,7 @@ function AutoCratesTab:GetAccessorySpace()
     return count, space
 end
 
+-- ✅ อัพเดทสถานะ Accessories
 function AutoCratesTab:UpdateAccessoryStatus()
     if not self.AccessoryStatusLabel then return end
     
@@ -346,7 +278,7 @@ function AutoCratesTab:UpdateAccessoryStatus()
     end
     
     self.AccessoryStatusLabel.Text = string.format(
-        "📦 %d/%d (Free: %d)", -- ข้อความสั้นลงให้อ่านง่าย
+        "📦 Accessories: %d/%d (Space: %d)",
         count,
         AUTO_DELETE_CONFIG.MAX_ACCESSORIES,
         space
@@ -986,7 +918,7 @@ function AutoCratesTab:ResetButton()
     
     self.AutoOpenBtn.Text = "START OPEN"
     self.AutoOpenBtn.TextColor3 = THEME.TextWhite
-    self.AutoOpenBtn.BackgroundColor3 = THEME.AccentBlue
+    self.AutoOpenBtn.BackgroundColor3 = THEME.CardBg 
     
     if self.AutoOpenBtnStroke then
         self.AutoOpenBtnStroke.Color = THEME.AccentBlue
