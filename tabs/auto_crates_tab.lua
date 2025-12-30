@@ -79,21 +79,20 @@ function AutoCratesTab:Init(parent)
         Parent = btnContainer,
         Text = "✓ SELECT ALL",
         Size = UDim2.new(0, 140, 0, 32),
-        BgColor = Color3.fromRGB(30, 30, 35), -- สีมืดพื้นหลัง
-        BgTransparency = 0.7, -- ✅ ตั้งค่าให้ใสแบบกระจก
-        TextSize = 11,
-        Font = Enum.Font.GothamMedium,
+        BgColor = THEME.CardBg, -- ✅ เปลี่ยน: ใช้สีเดียวกับปุ่ม Start (เดิมเป็นสีมืด)
+        TextSize = 12,          -- ✅ เปลี่ยน: ขนาด 12 เท่าปุ่ม Start (เดิม 11)
+        Font = Enum.Font.GothamBold, -- ✅ เปลี่ยน: ใช้ตัวหนาเท่าปุ่ม Start (เดิม Medium)
         CornerRadius = 6
     })
     
-    -- ✅ เก็บตัวแปร Stroke ไว้เปลี่ยนสี (เหมือนปุ่ม Start)
-    self.SelectAllBtnStroke = self.UIFactory.AddStroke(self.SelectAllBtn, THEME.AccentBlue, 1, 0.7)
+    -- ✅ เปลี่ยน: ปรับขนาดเส้นขอบ (Thickness 1.5) และความชัด (0.4) ให้เท่าปุ่ม Start
+    self.SelectAllBtnStroke = self.UIFactory.AddStroke(self.SelectAllBtn, THEME.AccentBlue, 1.5, 0.4)
 
     self.AutoOpenBtn = self.UIFactory.CreateButton({
         Parent = btnContainer,
         Text = "🚀 START OPEN",
         Size = UDim2.new(0, 160, 0, 32),
-        BgColor = THEME.CardBg, -- 🟢 ใช้สีพื้นหลังการ์ดแทน (จะดูเนียนกว่า)
+        BgColor = THEME.CardBg,
         TextSize = 12,
         Font = Enum.Font.GothamBold,
         CornerRadius = 6
@@ -399,29 +398,37 @@ end
 function AutoCratesTab:UpdateSelectButton()
     local THEME = self.Config.THEME
     
+    -- รีเซตสีพื้นหลังให้เป็นแบบ Card เสมอ (แก้กรณีมันค้างเป็นสีเทาตอน Disable)
+    self.SelectAllBtn.BackgroundColor3 = THEME.CardBg 
+
     if self:AreAllSelected() then
-        -- 🔴 เมื่อเลือกครบแล้ว (Unselect All) -> ให้เป็นสีแดงใสๆ
+        -- 🔴 เมื่อเลือกครบแล้ว (Unselect All) -> ให้เป็นสไตล์เดียวกับปุ่ม STOP (แดง)
         self.SelectAllBtn.Text = "✕ UNSELECT ALL"
-        self.SelectAllBtn.TextColor3 = Color3.fromRGB(255, 110, 110) -- แดงอ่อน
+        self.SelectAllBtn.TextColor3 = THEME.Fail or Color3.fromRGB(255, 85, 85) -- แดงชัดๆ
+        
         if self.SelectAllBtnStroke then
-            self.SelectAllBtnStroke.Color = Color3.fromRGB(255, 100, 100)
-            self.SelectAllBtnStroke.Transparency = 0.5
+            self.SelectAllBtnStroke.Color = THEME.Fail or Color3.fromRGB(255, 85, 85)
+            self.SelectAllBtnStroke.Transparency = 0.4 -- ให้ขอบชัดเท่าเดิม
         end
     else
-        -- 🔵 เมื่อยังเลือกไม่ครบ (Select All) -> ให้เป็นสีขาว/ฟ้าใสๆ
+        -- 🔵 เมื่อยังเลือกไม่ครบ (Select All) -> ให้เป็นสไตล์เดียวกับปุ่ม START (ฟ้า/ขาว)
         self.SelectAllBtn.Text = "✓ SELECT ALL"
-        self.SelectAllBtn.TextColor3 = Color3.fromRGB(220, 220, 220) -- ขาวนวล
+        self.SelectAllBtn.TextColor3 = THEME.TextWhite -- ขาวสว่าง
+        
         if self.SelectAllBtnStroke then
             self.SelectAllBtnStroke.Color = THEME.AccentBlue
-            self.SelectAllBtnStroke.Transparency = 0.7
+            self.SelectAllBtnStroke.Transparency = 0.4
         end
     end
 
-    -- ⚙️ ถ้ากำลังรันงานอยู่ (Disabled) -> ให้จางลงไปอีก
+    -- ⚙️ ถ้ากำลังรันงานอยู่ (Disabled) -> ให้ทำสีเทาทึบๆ
     if self.IsProcessing then
+        self.SelectAllBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45) -- เทาเข้ม
         self.SelectAllBtn.TextTransparency = 0.6
+        self.SelectAllBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
         if self.SelectAllBtnStroke then
-            self.SelectAllBtnStroke.Transparency = 0.9
+            self.SelectAllBtnStroke.Color = Color3.fromRGB(80, 80, 80)
+            self.SelectAllBtnStroke.Transparency = 0.8
         end
     else
         self.SelectAllBtn.TextTransparency = 0
