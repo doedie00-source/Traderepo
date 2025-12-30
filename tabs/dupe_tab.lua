@@ -111,64 +111,72 @@ function DupeTab:CreateFloatingButtons(parent)
     
     local spacing = 6
     local btnWidth = 90
-    local btnHeight = 30
+    local btnHeight = 32 -- ✅ เพิ่มความสูงนิดนึงให้เท่าปุ่ม Start
     local startX = -8 
     
+    -- 1. ปุ่ม DUPE (สไตล์สีเขียวแบบ Card)
     self.FloatingButtons.BtnDupePet = self.UIFactory.CreateButton({
         Size = UDim2.new(0, btnWidth, 0, btnHeight),
-        Position = UDim2.new(1, startX - btnWidth, 1, -36),
+        Position = UDim2.new(1, startX - btnWidth, 1, -38),
         Text = "✨ DUPE",
-        BgColor = THEME.AccentGreen,
-        TextSize = 11,
+        BgColor = THEME.CardBg, -- ✅ ใช้พื้นหลังสี Card
+        TextSize = 12,          -- ✅ ขนาด 12 ตัวหนา
         Font = Enum.Font.GothamBold,
         Parent = parent,
         OnClick = function() self:OnDupePets() end
     })
     self.FloatingButtons.BtnDupePet.ZIndex = 101
     self.FloatingButtons.BtnDupePet.Visible = false
-    self.UIFactory.AddStroke(self.FloatingButtons.BtnDupePet, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
+    -- ✅ เส้นขอบสีเขียว คมชัด
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnDupePet, THEME.AccentGreen, 1.5, 0.4)
     
+    -- 2. ปุ่ม EVOLVE (สไตล์สีม่วงแบบ Card)
     self.FloatingButtons.BtnEvoPet = self.UIFactory.CreateButton({
         Size = UDim2.new(0, btnWidth + 15, 0, btnHeight),
-        Position = UDim2.new(1, startX - btnWidth*2 - spacing - 15, 1, -36),
+        Position = UDim2.new(1, startX - btnWidth*2 - spacing - 15, 1, -38),
         Text = "🧬 EVOLVE",
-        BgColor = THEME.AccentPurple,
-        TextSize = 11,
+        BgColor = THEME.CardBg, -- ✅ ใช้พื้นหลังสี Card
+        TextSize = 12,
         Font = Enum.Font.GothamBold,
         Parent = parent,
         OnClick = function() self:OnEvolvePets() end
     })
     self.FloatingButtons.BtnEvoPet.ZIndex = 101
     self.FloatingButtons.BtnEvoPet.Visible = false
-    self.UIFactory.AddStroke(self.FloatingButtons.BtnEvoPet, Color3.fromRGB(120, 130, 255), 1.5, 0.3)
+    -- ✅ เส้นขอบสีม่วง
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnEvoPet, THEME.AccentPurple, 1.5, 0.4)
     
+    -- 3. ปุ่ม DELETE (สไตล์สีแดงแบบ Card)
     self.FloatingButtons.BtnDeletePet = self.UIFactory.CreateButton({
         Size = UDim2.new(0, btnWidth, 0, btnHeight),
-        Position = UDim2.new(1, startX - btnWidth*3 - spacing*2 - 15, 1, -36),
+        Position = UDim2.new(1, startX - btnWidth*3 - spacing*2 - 15, 1, -38),
         Text = "🗑️ DELETE",
-        BgColor = THEME.Fail,
-        TextSize = 11,
+        BgColor = THEME.CardBg, -- ✅ ใช้พื้นหลังสี Card
+        TextSize = 12,
         Font = Enum.Font.GothamBold,
         Parent = parent,
         OnClick = function() self:OnDeletePets() end
     })
     self.FloatingButtons.BtnDeletePet.ZIndex = 101
     self.FloatingButtons.BtnDeletePet.Visible = false
-    self.UIFactory.AddStroke(self.FloatingButtons.BtnDeletePet, Color3.fromRGB(255, 100, 100), 1.5, 0.3)
+    -- ✅ เส้นขอบสีแดง (Fail)
+    self.UIFactory.AddStroke(self.FloatingButtons.BtnDeletePet, THEME.Fail, 1.5, 0.4)
     
+    -- 4. ปุ่ม ADD ALL (สไตล์สีเขียวแบบ Card)
     self.FloatingButtons.BtnAddAll1k = self.UIFactory.CreateButton({
-        Size = UDim2.new(0, 130, 0, btnHeight),
-        Position = UDim2.new(1, -138, 1, -36),
+        Size = UDim2.new(0, 140, 0, btnHeight), -- ปรับขนาดให้สวยขึ้น
+        Position = UDim2.new(1, -148, 1, -38),
         Text = "➕ ADD ALL",
-        BgColor = THEME.AccentGreen,
-        TextSize = 11,
+        BgColor = THEME.CardBg, -- ✅ ใช้พื้นหลังสี Card
+        TextSize = 12,
         Font = Enum.Font.GothamBold,
         Parent = parent
     })
     if self.FloatingButtons.BtnAddAll1k then
         self.FloatingButtons.BtnAddAll1k.ZIndex = 101
         self.FloatingButtons.BtnAddAll1k.Visible = false
-        self.UIFactory.AddStroke(self.FloatingButtons.BtnAddAll1k, Color3.fromRGB(100, 255, 150), 1.5, 0.3)
+        -- ✅ เส้นขอบสีเขียว
+        self.UIFactory.AddStroke(self.FloatingButtons.BtnAddAll1k, THEME.AccentGreen, 1.5, 0.4)
     end
 end
 
@@ -1028,9 +1036,9 @@ function DupeTab:UpdateEvoButtonState()
         end
         
         if not allSameName then
-            btnText = "❌ MISMATCH NAME"
+            btnText = "❌ NAME MISMATCH"
         elseif not allSameEvo then
-            btnText = "❌ MISMATCH EVO"
+            btnText = "❌ EVO MISMATCH"
         elseif not notMaxLevel then
             btnText = "🚫 MAX LEVEL"
         else
@@ -1041,34 +1049,37 @@ function DupeTab:UpdateEvoButtonState()
     
     self.FloatingButtons.BtnEvoPet.Text = btnText
     
+    -- ✅✅✅ ปรับ Logic สีตรงนี้ใหม่ ให้เปลี่ยนแค่ Stroke/Text ไม่เปลี่ยนพื้นหลัง
     if isValid then
-        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = THEME.AccentPurple
+        -- กรณีใช้งานได้: พื้นหลัง Card, ตัวหนังสือขาวสว่าง, ขอบสีม่วงชัด
+        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = THEME.CardBg 
         self.FloatingButtons.BtnEvoPet.AutoButtonColor = true
         self.FloatingButtons.BtnEvoPet.TextTransparency = 0
         self.FloatingButtons.BtnEvoPet.TextColor3 = THEME.TextWhite
         
         if self.FloatingButtons.BtnEvoPet:FindFirstChild("UIStroke") then
-            self.FloatingButtons.BtnEvoPet.UIStroke.Color = Color3.fromRGB(150, 160, 255)
-            self.FloatingButtons.BtnEvoPet.UIStroke.Thickness = 2
-            self.FloatingButtons.BtnEvoPet.UIStroke.Transparency = 0.2
+            self.FloatingButtons.BtnEvoPet.UIStroke.Color = THEME.AccentPurple
+            self.FloatingButtons.BtnEvoPet.UIStroke.Thickness = 1.5
+            self.FloatingButtons.BtnEvoPet.UIStroke.Transparency = 0.4
         end
     else
-        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        -- กรณีใช้งานไม่ได้: พื้นหลัง Card, ตัวหนังสือจาง, ขอบสีเทาจาง
+        self.FloatingButtons.BtnEvoPet.BackgroundColor3 = THEME.CardBg
         self.FloatingButtons.BtnEvoPet.AutoButtonColor = false
-        self.FloatingButtons.BtnEvoPet.TextTransparency = 0.3
-        self.FloatingButtons.BtnEvoPet.TextColor3 = Color3.fromRGB(100, 100, 105)
+        self.FloatingButtons.BtnEvoPet.TextTransparency = 0.5
+        self.FloatingButtons.BtnEvoPet.TextColor3 = Color3.fromRGB(150, 150, 150)
         
         if self.FloatingButtons.BtnEvoPet:FindFirstChild("UIStroke") then
-            self.FloatingButtons.BtnEvoPet.UIStroke.Color = Color3.fromRGB(60, 60, 70)
+            self.FloatingButtons.BtnEvoPet.UIStroke.Color = Color3.fromRGB(80, 80, 80) -- เทา
             self.FloatingButtons.BtnEvoPet.UIStroke.Thickness = 1
-            self.FloatingButtons.BtnEvoPet.UIStroke.Transparency = 0.6
+            self.FloatingButtons.BtnEvoPet.UIStroke.Transparency = 0.7
         end
     end
     
     self.FloatingButtons.BtnEvoPet:SetAttribute("IsValid", isValid)
 end
 
--- ✅ แก้ไข ShowQuantityPopup - ป้องกัน popup ซ้อนทับ
+
 function DupeTab:ShowQuantityPopup(itemData, onConfirm)
     -- ป้องกันเปิด popup ซ้ำ
     if self.isPopupOpen then return end
