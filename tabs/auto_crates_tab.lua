@@ -77,7 +77,7 @@ function AutoCratesTab:Init(parent)
     
     self.SelectAllBtn = self.UIFactory.CreateButton({
         Parent = btnContainer,
-        Text = "✓ SELECT ALL",
+        Text = "SELECT ALL",
         Size = UDim2.new(0, 140, 0, 32),
         BgColor = THEME.CardBg, -- ✅ เปลี่ยน: ใช้สีเดียวกับปุ่ม Start (เดิมเป็นสีมืด)
         TextSize = 12,          -- ✅ เปลี่ยน: ขนาด 12 เท่าปุ่ม Start (เดิม 11)
@@ -90,7 +90,7 @@ function AutoCratesTab:Init(parent)
 
     self.AutoOpenBtn = self.UIFactory.CreateButton({
         Parent = btnContainer,
-        Text = "🚀 START OPEN",
+        Text = "START OPEN",
         Size = UDim2.new(0, 160, 0, 32),
         BgColor = THEME.CardBg,
         TextSize = 12,
@@ -402,8 +402,8 @@ function AutoCratesTab:UpdateSelectButton()
     self.SelectAllBtn.BackgroundColor3 = THEME.CardBg 
 
     if self:AreAllSelected() then
-        -- 🔴 เมื่อเลือกครบแล้ว (Unselect All) -> ให้เป็นสไตล์เดียวกับปุ่ม STOP (แดง)
-        self.SelectAllBtn.Text = "✕ UNSELECT ALL"
+
+        self.SelectAllBtn.Text = "UNSELECT ALL"
         self.SelectAllBtn.TextColor3 = THEME.Fail or Color3.fromRGB(255, 85, 85) -- แดงชัดๆ
         
         if self.SelectAllBtnStroke then
@@ -412,7 +412,7 @@ function AutoCratesTab:UpdateSelectButton()
         end
     else
         -- 🔵 เมื่อยังเลือกไม่ครบ (Select All) -> ให้เป็นสไตล์เดียวกับปุ่ม START (ฟ้า/ขาว)
-        self.SelectAllBtn.Text = "✓ SELECT ALL"
+        self.SelectAllBtn.Text = "SELECT ALL"
         self.SelectAllBtn.TextColor3 = THEME.TextWhite -- ขาวสว่าง
         
         if self.SelectAllBtnStroke then
@@ -485,7 +485,7 @@ end
 function AutoCratesTab:ToggleAutoOpen()
     if self.IsProcessing then
         self.ShouldStop = true
-        self.AutoOpenBtn.Text = "⏸️ STOPPING..."
+        self.AutoOpenBtn.Text = "STOPPING..."
         self.AutoOpenBtn.BackgroundColor3 = self.Config.THEME.Warning
     else
         self:StartAutoOpen()
@@ -509,7 +509,7 @@ function AutoCratesTab:StartAutoOpen()
     
     self.IsProcessing = true
     self.ShouldStop = false
-    self.AutoOpenBtn.Text = "🛑 STOP OPEN"
+    self.AutoOpenBtn.Text = "STOP OPEN"
     self.AutoOpenBtn.TextColor3 = self.Config.THEME.Fail -- เปลี่ยนแค่สีตัวอักษรเป็นแดง
     if self.AutoOpenBtnStroke then
         self.AutoOpenBtnStroke.Color = self.Config.THEME.Fail -- เปลี่ยนขอบเป็นแดง
@@ -672,7 +672,7 @@ function AutoCratesTab:ResetButton()
     local THEME = self.Config.THEME
     
     -- คืนค่าปุ่ม Start
-    self.AutoOpenBtn.Text = "🚀 START OPEN"
+    self.AutoOpenBtn.Text = "START OPEN"
     self.AutoOpenBtn.TextColor3 = THEME.TextWhite
     if self.AutoOpenBtnStroke then
         self.AutoOpenBtnStroke.Color = THEME.AccentBlue
