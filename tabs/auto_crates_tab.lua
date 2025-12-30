@@ -79,14 +79,15 @@ function AutoCratesTab:Init(parent)
         Parent = btnContainer,
         Text = "✓ SELECT ALL",
         Size = UDim2.new(0, 140, 0, 32),
-        BgColor = THEME.CardBg, -- ใช้สีพื้นหลัง UI
+        BgColor = Color3.fromRGB(30, 30, 35), -- สีมืดพื้นหลัง
+        BgTransparency = 0.7, -- ✅ ตั้งค่าให้ใสแบบกระจก
         TextSize = 11,
-        Font = Enum.Font.GothamBold,
+        Font = Enum.Font.GothamMedium,
         CornerRadius = 6
     })
     
-    -- ใส่ Stroke ให้ปุ่ม Select All
-    self.SelectAllBtnStroke = self.UIFactory.AddStroke(self.SelectAllBtn, THEME.AccentBlue, 1.5, 0.4)
+    -- ✅ เก็บตัวแปร Stroke ไว้เปลี่ยนสี (เหมือนปุ่ม Start)
+    self.SelectAllBtnStroke = self.UIFactory.AddStroke(self.SelectAllBtn, THEME.AccentBlue, 1, 0.7)
 
     self.AutoOpenBtn = self.UIFactory.CreateButton({
         Parent = btnContainer,
@@ -399,27 +400,31 @@ function AutoCratesTab:UpdateSelectButton()
     local THEME = self.Config.THEME
     
     if self:AreAllSelected() then
-        -- 🟥 สถานะ: กดเพื่อล้าง (Unselect All)
-        self.SelectAllBtn.Text = "X UNSELECT ALL"
-        self.SelectAllBtn.TextColor3 = THEME.Fail -- ข้อความสีแดงอ่อน
+        -- 🔴 เมื่อเลือกครบแล้ว (Unselect All) -> ให้เป็นสีแดงใสๆ
+        self.SelectAllBtn.Text = "✕ UNSELECT ALL"
+        self.SelectAllBtn.TextColor3 = Color3.fromRGB(255, 110, 110) -- แดงอ่อน
         if self.SelectAllBtnStroke then
-            self.SelectAllBtnStroke.Color = THEME.Fail -- ขอบสีแดง
+            self.SelectAllBtnStroke.Color = Color3.fromRGB(255, 100, 100)
+            self.SelectAllBtnStroke.Transparency = 0.5
         end
     else
-        -- 🟦 สถานะ: กดเพื่อเลือกทั้งหมด (Select All)
+        -- 🔵 เมื่อยังเลือกไม่ครบ (Select All) -> ให้เป็นสีขาว/ฟ้าใสๆ
         self.SelectAllBtn.Text = "✓ SELECT ALL"
-        self.SelectAllBtn.TextColor3 = THEME.TextWhite -- ข้อความสีขาว
+        self.SelectAllBtn.TextColor3 = Color3.fromRGB(220, 220, 220) -- ขาวนวล
         if self.SelectAllBtnStroke then
-            self.SelectAllBtnStroke.Color = THEME.AccentBlue -- ขอบสีฟ้าธีมหลัก
+            self.SelectAllBtnStroke.Color = THEME.AccentBlue
+            self.SelectAllBtnStroke.Transparency = 0.7
         end
     end
-    
-    -- ✅ ป้องกันการกดตอนกำลังรันงาน (Disabled Look)
+
+    -- ⚙️ ถ้ากำลังรันงานอยู่ (Disabled) -> ให้จางลงไปอีก
     if self.IsProcessing then
-        self.SelectAllBtn.TextColor3 = Color3.fromRGB(100, 100, 100)
+        self.SelectAllBtn.TextTransparency = 0.6
         if self.SelectAllBtnStroke then
-            self.SelectAllBtnStroke.Color = Color3.fromRGB(60, 60, 60)
+            self.SelectAllBtnStroke.Transparency = 0.9
         end
+    else
+        self.SelectAllBtn.TextTransparency = 0
     end
 end
 
@@ -436,6 +441,7 @@ function AutoCratesTab:SelectAll()
         end
     end
     self:UpdateInfoLabel()
+    self:UpdateSelectButton()
 end
 
 function AutoCratesTab:DeselectAll()
@@ -448,6 +454,7 @@ function AutoCratesTab:DeselectAll()
         data.CheckBoxStroke.Color = self.Config.THEME.GlassStroke
     end
     self:UpdateInfoLabel()
+    self:UpdateSelectButton()
 end
 
 function AutoCratesTab:UpdateInfoLabel()
